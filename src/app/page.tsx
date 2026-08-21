@@ -46,6 +46,7 @@ import { ShortcutHelp } from "@/components/ecc/shortcut-help";
 import { StatsChart } from "@/components/ecc/stats-chart";
 import { ArchCard } from "@/components/ecc/arch-card";
 import { ReadingProgress } from "@/components/ecc/reading-progress";
+import { RelationshipGraph } from "@/components/ecc/relationship-graph";
 import type {
   Overview,
   CatalogResponse,
@@ -235,6 +236,7 @@ export default function Home() {
         />
         <Stats overview={overview} />
         <Architecture sections={sections} overview={overview} />
+        <RelationshipGraphSection />
         <Catalog
           catalog={catalog}
           loading={catalogLoading}
@@ -284,7 +286,7 @@ function Header({
   onOpenHelp: () => void;
 }) {
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/70 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
         <a href="#top" className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
@@ -300,6 +302,7 @@ function Header({
         <nav className="hidden items-center gap-1 lg:flex">
           {[
             ["Architecture", "#architecture"],
+            ["Graph", "#graph"],
             ["Catalog", "#catalog"],
             ["AI Layer", "#ai"],
             ["Hooks", "#hooks-explorer"],
@@ -377,6 +380,10 @@ function Hero({
   return (
     <section id="top" className="relative overflow-hidden border-b border-border">
       <div className="ecc-hero-grid absolute inset-0 -z-10" />
+      <div
+        aria-hidden
+        className="ecc-mesh-bg absolute inset-0 -z-10 opacity-60"
+      />
       <div
         aria-hidden
         className="absolute inset-0 -z-10"
@@ -795,6 +802,29 @@ function AIIntegration({ overview }: { overview: Overview | null }) {
             <ProviderChart providers={providers} />
           </div>
         )}
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Relationship Graph                                                  */
+/* ------------------------------------------------------------------ */
+function RelationshipGraphSection() {
+  return (
+    <section
+      id="graph"
+      className="ecc-section-accent scroll-mt-16 border-b border-border py-16 sm:py-20"
+    >
+      <div className="mx-auto max-w-6xl px-4">
+        <SectionHeading
+          eyebrow="Network"
+          title="Agent relationship graph"
+          subtitle="A radial visualization of how all 68 agents cluster by category, which models they use (sonnet/haiku/opus), and which tools they're granted. Hover any node to highlight its connections."
+        />
+        <div className="mt-8">
+          <RelationshipGraph />
+        </div>
       </div>
     </section>
   );

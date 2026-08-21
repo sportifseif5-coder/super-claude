@@ -1115,3 +1115,127 @@ export async function getCompare(
   };
   return { a: enrich(a), b: enrich(b) };
 }
+
+// ---------------------------------------------------------------------------
+// Agent relationship graph data
+// ---------------------------------------------------------------------------
+
+export interface GraphNode {
+  id: string;
+  label: string;
+  type: "agent" | "model" | "tool" | "category";
+  weight: number;
+  meta?: string;
+}
+
+export interface GraphLink {
+  source: string;
+  target: string;
+  value: number;
+}
+
+export interface GraphData {
+  nodes: GraphNode[];
+  links: GraphLink[];
+  stats: {
+    totalAgents: number;
+    categories: number;
+    models: number;
+    tools: number;
+  };
+}
+
+let graphCache: GraphData | null = null;
+
+export async function getGraphData(): Promise<GraphData> {
+  if (graphCache) return graphCache;
+  const catalog = await getCatalog();
+  const nodes: GraphNode[] = [];
+  const links: GraphLink[] = [];
+  const nodeSet = new Set<string>();
+  const linkMap = new Map<string, number>();
+
+  const addNode = (n: GraphNode) => {
+    if (!nodeSet.has(n.id)) {
+      nodes.push(n);
+      nodeSet.add(n.id);
+    }
+  };
+  const addLink = (source: string, target: string) => {
+    const key = `${source}→${target}`;
+    linkMap.set(key, (linkMap.get(key) ?? 0) + 1);
+  };
+
+  const categories = new Set<string>();
+  const models = new Set<string>();
+  const tools = new Set<string>();
+
+  for (const agent of catalog.agents) {
+    // Agent node
+    addNode({
+      id: `agent:${agent.slug}`,
+      label: agent.slug,
+      type: "agent",
+      weight: 1,
+    });
+
+    // Category (filename prefix before first hyphen)
+    const category = agent.slug.includes("-")
+      ? agent.slug.split("-")[0]
+      : "general";
+    categories.add(category);
+    addNode({
+      id: `cat:${category}`,
+      label: category,
+      type: "category",
+      weight: 0,
+      meta: "category",
+    });
+    addLink(`cat:${category}`, `agent:${agent.slug}`);
+
+    // Model
+    const model = typeof agent.extra["model"] === "string" ? agent.extra["model"] : "sonnet";
+    models.add(model);
+    addNode({
+      id: `model:${model}`,
+      label: model,
+      type: "model",
+      weight: 0,
+      meta: "model",
+    });
+    addLink(`agent:${agent.slug}`, `model:${model}`);
+
+    // Tools
+    const toolsStr = typeof agent.extra["tools"] === "string" ? agent.extra["tools"] : "";
+    if (toolsStr) {
+      for (const tool of toolsStr.split(",").map((t) => t.trim()).filter(Boolean)) {
+        tools.add(tool);
+        addNode({
+          id: `tool:${tool}`,
+          label: tool,
+          type: "tool",
+          weight: 0,
+          meta: "tool",
+        });
+        addLink(`agent:${agent.slug}`, `tool:${tool}`);
+      }
+    }
+  }
+
+  for (const [key, value] of linkMap.entries()) {
+    const [source, target] = key.split("→");
+    links.push({ source, target, value });
+  }
+
+  graphCache = {
+    nodes,
+    links,
+    stats: {
+      totalAgents: catalog.agents.length,
+      categories: categories.size,
+      models: models.size,
+      tools: tools.size,
+    },
+  };
+  return graphCache;
+}

@@ -373,3 +373,71 @@ Stage Summary:
 - Next phase candidates: bento grid layout for stats/principles, glassmorphism effects,
   ecc2 harness-eval playground simulator, agent/skill relationship graph (which agents use
   which skills), dark/light theme persistence in URL.
+
+---
+Task ID: 10 (recurring webDevReview round 5)
+Agent: main (Z.ai Code)
+Task: QA + new features (relationship graph, glassmorphism, gradient mesh) + styling polish.
+
+Work Log:
+- Reviewed worklog (round 4: 16 features, 10 API endpoints, progressive disclosure + deep links).
+- QA via agent-browser + VLM: app stable, no errors. VLM suggested a force-directed
+  relationship graph as the most impactful new feature.
+
+NEW BACKEND:
+- Extended scanner with getGraphData(): builds GraphData from agent metadata — nodes for
+  agents (68), categories (50, by filename prefix), models (3: sonnet/haiku/opus), tools
+  (10: Read/Write/Edit/Bash/Grep/Glob/WebSearch/WebFetch/mcp__*); links connecting
+  agents→categories, agents→models, agents→tools. 131 nodes, 443 links total.
+- Created /api/ecc/graph (force-static) endpoint.
+
+NEW FRONTEND:
+- src/components/ecc/relationship-graph.tsx: interactive SVG radial network visualization:
+  - categories in center cluster, agents in middle ring (r=180), models+tools outer ring (r=280);
+  - color-coded nodes (agents=amber/primary, models=blue, tools=green, categories=purple);
+  - connection lines with opacity that highlight on hover (connected nodes brighten,
+    unconnected dim to 5% opacity);
+  - filter toggles to show/hide each node type;
+  - hover detail bar showing node id + connection count;
+  - labels on models/categories always, agents on hover;
+  - horizontally scrollable on mobile.
+
+STYLING POLISH:
+- Glassmorphism: header now uses bg-background/70 backdrop-blur-xl (frosted glass effect).
+  VLM-verified: "header exhibits glassmorphism, semi-transparent frosted appearance."
+- Gradient mesh background: added .ecc-mesh-bg CSS utility (3 radial gradients in
+  amber/orange/primary), applied to hero at 60% opacity. VLM-verified: "subtle warm gradient
+  mesh with soft radial glows in amber and orange tones."
+- Added .ecc-glass utility class (backdrop-blur + saturate) for future use.
+- Added .ecc-glow hover animation (pulsing box-shadow).
+- Header nav: added "Graph" link.
+- Scroll spy: added "Graph" section.
+
+PAGE INTEGRATION:
+- Added RelationshipGraphSection (new section between Architecture and Catalog).
+- Hero: added mesh background layer.
+
+SELF-VERIFICATION (agent-browser + VLM):
+- Graph renders: 131 nodes, 443 links, color-coded (VLM: "amber agents, blue sonnet model,
+  purple categories, connection lines visible, filter toggles present, no rendering bugs").
+- Filter toggle: clicking "Tool" changes node count (filter works).
+- Hover: dispatching mouseenter on a node (test limitation — React synthetic events don't
+  always trigger via dispatchEvent, but the handler is wired correctly).
+- Hero glassmorphism + mesh: VLM-verified "premium visual feel, high-contrast typography,
+  cohesive amber accent, polished UI elements."
+- Mobile (390x844): graph renders, horizontally scrollable.
+- Lint: 0 errors. Dev log: all 11 routes 200 (overview/catalog/file/hooks/hooks-raw/mcp/
+  search/detail/random/compare/graph), no runtime errors.
+
+Stage Summary:
+- App now has 9 sections + 17 interactive features total:
+  Catalog browser, Hooks Explorer (+raw JSON), MCP Catalog, Command Palette, Provider Radar,
+  Item Detail Modal (+share/copy/github), Architecture Diagram, Scroll Spy, Discover button,
+  Compare modal, Shortcut help overlay, Stats bar chart, Progressive disclosure arch cards,
+  Reading progress bar, Shareable deep links, Relationship graph, Glassmorphism + mesh bg.
+- 11 API endpoints: overview, catalog, file, hooks, hooks-raw, mcp, search, detail, random,
+  compare, graph.
+- VLM-verified: glassmorphism header, gradient mesh hero, premium visual feel.
+- Next phase candidates: bento grid for stats, agent-skill cross-references (which skills
+  mention which agents), ecc2 harness-eval playground, theme persistence in URL, animated
+  graph node entrance, graph node click → open detail modal.

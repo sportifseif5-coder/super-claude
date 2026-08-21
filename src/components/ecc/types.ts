@@ -179,3 +179,29 @@ export interface CompareResult {
   a: CompareItem | null;
   b: CompareItem | null;
 }
+
+/* Graph */
+export interface GraphNode {
+  id: string;
+  label: string;
+  type: "agent" | "model" | "tool" | "category";
+  weight: number;
+  meta?: string;
+}
+
+export interface GraphLink {
+  source: string;
+  target: string;
+  value: number;
+}
+
+export interface GraphData {
+  nodes: GraphNode[];
+  links: GraphLink[];
+  stats: {
+    totalAgents: number;
+    categories: number;
+    models: number;
+    tools: number;
+  };
+}
