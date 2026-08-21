@@ -36,11 +36,15 @@ import { HooksExplorer } from "@/components/ecc/hooks-explorer";
 import { McpCatalog } from "@/components/ecc/mcp-catalog";
 import { CommandPalette } from "@/components/ecc/command-palette";
 import { ProviderChart } from "@/components/ecc/provider-chart";
+import { ItemDetailModal, DiscoverButton } from "@/components/ecc/item-detail-modal";
+import { ArchitectureDiagram } from "@/components/ecc/architecture-diagram";
+import { ScrollSpy } from "@/components/ecc/scroll-spy";
 import type {
   Overview,
   CatalogResponse,
   ArchitectureSection,
   NotableFile,
+  CatalogItem,
 } from "@/components/ecc/types";
 
 export default function Home() {
@@ -51,6 +55,7 @@ export default function Home() {
   const [catalogLoading, setCatalogLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = React.useState(false);
+  const [detailItem, setDetailItem] = React.useState<CatalogItem | null>(null);
 
   React.useEffect(() => {
     Promise.all([
@@ -83,12 +88,21 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <ScrollSpy />
       <Header overview={overview} onOpenPalette={() => setPaletteOpen(true)} />
       <main className="flex-1">
-        <Hero overview={overview} onOpenPalette={() => setPaletteOpen(true)} />
+        <Hero
+          overview={overview}
+          onOpenPalette={() => setPaletteOpen(true)}
+          onDiscover={(item) => setDetailItem(item)}
+        />
         <Stats overview={overview} />
         <Architecture sections={sections} overview={overview} />
-        <Catalog catalog={catalog} loading={catalogLoading} />
+        <Catalog
+          catalog={catalog}
+          loading={catalogLoading}
+          onSelect={(item) => setDetailItem(item)}
+        />
         <AIIntegration overview={overview} />
         <HooksExplorerSection />
         <HooksMemory overview={overview} sections={sections} />
@@ -104,6 +118,7 @@ export default function Home() {
       </main>
       <Footer overview={overview} />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+      <ItemDetailModal item={detailItem} onClose={() => setDetailItem(null)} />
     </div>
   );
 }
@@ -176,7 +191,15 @@ function Header({ overview, onOpenPalette }: { overview: Overview | null; onOpen
 /* ------------------------------------------------------------------ */
 /* Hero                                                                */
 /* ------------------------------------------------------------------ */
-function Hero({ overview, onOpenPalette }: { overview: Overview | null; onOpenPalette: () => void }) {
+function Hero({
+  overview,
+  onOpenPalette,
+  onDiscover,
+}: {
+  overview: Overview | null;
+  onOpenPalette: () => void;
+  onDiscover: (item: CatalogItem) => void;
+}) {
   return (
     <section id="top" className="relative overflow-hidden border-b border-border">
       <div className="ecc-hero-grid absolute inset-0 -z-10" />
@@ -247,6 +270,7 @@ function Hero({ overview, onOpenPalette }: { overview: Overview | null; onOpenPa
                 <CommandIcon className="h-2.5 w-2.5" />K
               </kbd>
             </Button>
+            <DiscoverButton onPick={onDiscover} />
           </div>
         </motion.div>
 
@@ -453,6 +477,11 @@ function Architecture({
                 );
               })}
         </div>
+
+        {/* Interactive layered diagram */}
+        <div className="mt-8">
+          <ArchitectureDiagram />
+        </div>
       </div>
     </section>
   );
@@ -464,9 +493,11 @@ function Architecture({
 function Catalog({
   catalog,
   loading,
+  onSelect,
 }: {
   catalog: CatalogResponse | null;
   loading: boolean;
+  onSelect: (item: CatalogItem) => void;
 }) {
   return (
     <section id="catalog" className="scroll-mt-16 border-b border-border py-16 sm:py-20">
@@ -474,10 +505,10 @@ function Catalog({
         <SectionHeading
           eyebrow="The Catalog"
           title="68 agents · 286 skills · 94 commands"
-          subtitle="Every asset is a markdown file with YAML frontmatter. Browse, search, and read the full source of each one — pulled live from the cloned repo."
+          subtitle="Every asset is a markdown file with YAML frontmatter. Browse, search, and click any item to open a deep-dive modal with parsed “When to Use”, examples, a section index, and the full source."
         />
         <div className="mt-8">
-          <CatalogBrowser catalog={catalog} loading={loading} />
+          <CatalogBrowser catalog={catalog} loading={loading} onSelect={onSelect} />
         </div>
       </div>
     </section>

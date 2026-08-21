@@ -137,3 +137,32 @@ export interface SearchEntry {
   type: "agent" | "skill" | "command" | "rule" | "file" | "section";
   target: string;
 }
+
+/* Item detail (deep-dive) */
+export interface MarkdownSection {
+  heading: string;
+  level: number;
+  body: string;
+  bullets: string[];
+}
+
+export interface ItemDetail {
+  filePath: string;
+  language: string;
+  content: string;
+  frontmatter: Record<string, unknown>;
+  sections: MarkdownSection[];
+  whenToUse: string | null;
+  howItWorks: string | null;
+  examples: string[];
+  firstParagraph: string;
+}
+
+/* Random */
+export interface RandomItem {
+  type: CatalogType;
+  slug: string;
+  name: string;
+  description: string;
+  filePath: string;
+}

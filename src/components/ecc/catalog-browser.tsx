@@ -11,14 +11,13 @@ import {
   FileText,
   Loader2,
   X,
+  ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { CodeBlock } from "./code-block";
-import type { CatalogItem, CatalogType, FileResponse } from "./types";
+import type { CatalogItem, CatalogType } from "./types";
 
 const TABS: { id: CatalogType; label: string; icon: React.ElementType }[] = [
   { id: "agents", label: "Agents", icon: Users },
@@ -30,9 +29,10 @@ const TABS: { id: CatalogType; label: string; icon: React.ElementType }[] = [
 interface CatalogBrowserProps {
   catalog: { agents: CatalogItem[]; skills: CatalogItem[]; commands: CatalogItem[]; rules: CatalogItem[] } | null;
   loading: boolean;
+  onSelect?: (item: CatalogItem) => void;
 }
 
-export function CatalogBrowser({ catalog, loading }: CatalogBrowserProps) {
+export function CatalogBrowser({ catalog, loading, onSelect }: CatalogBrowserProps) {
   const [activeTab, setActiveTab] = React.useState<CatalogType>("agents");
   const [query, setQuery] = React.useState("");
   const [selected, setSelected] = React.useState<CatalogItem | null>(null);
@@ -47,6 +47,11 @@ export function CatalogBrowser({ catalog, loading }: CatalogBrowserProps) {
         it.description.toLowerCase().includes(q),
     );
   }, [items, query]);
+
+  const handleSelect = (item: CatalogItem) => {
+    setSelected(item);
+    onSelect?.(item);
+  };
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
@@ -129,7 +134,7 @@ export function CatalogBrowser({ catalog, loading }: CatalogBrowserProps) {
                   <li key={item.slug}>
                     <button
                       type="button"
-                      onClick={() => setSelected(item)}
+                      onClick={() => handleSelect(item)}
                       className={cn(
                         "group flex w-full flex-col gap-1 rounded-md px-3 py-2 text-left transition-colors",
                         isActive
@@ -177,11 +182,15 @@ export function CatalogBrowser({ catalog, loading }: CatalogBrowserProps) {
         </div>
       </div>
 
-      {/* Right: detail panel */}
+      {/* Right: preview panel (prompts deep-dive modal) */}
       <div className="min-h-[28rem] rounded-xl border border-border bg-card">
         <AnimatePresence mode="wait">
           {selected ? (
-            <ItemDetail key={selected.slug} item={selected} />
+            <PreviewPanel
+              key={selected.slug}
+              item={selected}
+              onOpen={() => onSelect?.(selected)}
+            />
           ) : (
             <motion.div
               key="empty"
@@ -196,7 +205,7 @@ export function CatalogBrowser({ catalog, loading }: CatalogBrowserProps) {
               <div>
                 <p className="font-medium">Select an item to inspect</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  The full markdown source + parsed frontmatter renders here.
+                  Click any agent, skill, command, or rule to open the deep-dive modal.
                 </p>
               </div>
             </motion.div>
@@ -207,37 +216,13 @@ export function CatalogBrowser({ catalog, loading }: CatalogBrowserProps) {
   );
 }
 
-function ItemDetail({ item }: { item: CatalogItem }) {
-  const [file, setFile] = React.useState<FileResponse | null>(null);
-  const [loading, setLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setFile(null);
-    fetch(`/api/ecc/file?path=${encodeURIComponent(item.filePath)}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (!cancelled) {
-          setFile(d);
-          setLoading(false);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [item.filePath]);
-
+function PreviewPanel({ item, onOpen }: { item: CatalogItem; onOpen: () => void }) {
   const fmEntries = Object.entries(item.extra).filter(
     ([k]) => k !== "name" && k !== "description",
   );
 
   return (
     <motion.div
-      key={item.slug}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
@@ -247,24 +232,24 @@ function ItemDetail({ item }: { item: CatalogItem }) {
       <div className="border-b border-border p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
+            <Badge variant="secondary" className="mb-1.5 capitalize">
+              {item.type.replace(/s$/, "")}
+            </Badge>
             <h3 className="truncate font-mono text-base font-semibold">{item.name}</h3>
             {item.description && (
               <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
             )}
           </div>
-          <Badge variant="secondary" className="shrink-0 capitalize">
-            {item.type.replace(/s$/, "")}
-          </Badge>
         </div>
         {fmEntries.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {fmEntries.slice(0, 8).map(([k, v]) => (
+            {fmEntries.slice(0, 6).map(([k, v]) => (
               <span
                 key={k}
                 className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 font-mono text-[0.65rem] text-muted-foreground"
               >
                 <span className="text-foreground/70">{k}:</span>
-                <span className="max-w-[12rem] truncate">
+                <span className="max-w-[10rem] truncate">
                   {Array.isArray(v) ? v.join(", ") : String(v)}
                 </span>
               </span>
@@ -272,23 +257,21 @@ function ItemDetail({ item }: { item: CatalogItem }) {
           </div>
         )}
       </div>
-      <div className="ecc-scroll min-h-0 flex-1 overflow-auto p-3">
-        {loading ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Reading source…
-          </div>
-        ) : file ? (
-          <CodeBlock
-            code={file.content}
-            language={file.language}
-            label={item.filePath}
-            maxHeight={520}
-          />
-        ) : (
-          <p className="py-12 text-center text-sm text-muted-foreground">
-            Could not read file.
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <FileText className="h-7 w-7" />
+        </div>
+        <div className="max-w-sm">
+          <p className="text-sm font-medium">Deep-dive available</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Open the full detail modal for parsed “When to Use” + “How it Works” sections,
+            code examples, a section index, and the complete source.
           </p>
-        )}
+        </div>
+        <Button onClick={onOpen} size="sm">
+          Open deep-dive
+          <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+        </Button>
       </div>
     </motion.div>
   );

@@ -908,3 +908,151 @@ export async function getSearchIndex(): Promise<SearchEntry[]> {
   searchCache = entries;
   return entries;
 }
+
+// ---------------------------------------------------------------------------
+// Skill / agent deep-dive: parse a markdown body into structured sections
+// ---------------------------------------------------------------------------
+
+export interface MarkdownSection {
+  heading: string;
+  level: number;
+  body: string;
+  bullets: string[];
+}
+
+export interface ItemDetail {
+  filePath: string;
+  language: string;
+  content: string;
+  frontmatter: Frontmatter;
+  sections: MarkdownSection[];
+  whenToUse: string | null;
+  howItWorks: string | null;
+  examples: string[];
+  firstParagraph: string;
+}
+
+export async function getItemDetail(rel: string): Promise<ItemDetail | null> {
+  let raw: string;
+  try {
+    raw = await readText(rel);
+  } catch {
+    return null;
+  }
+  const { fm, body } = parseFrontmatter(raw);
+  const sections = parseMarkdownSections(body);
+  const whenToUse = findSection(sections, ["when to use", "when to activate", "when to activate this skill"]);
+  const howItWorks = findSection(sections, ["how it works", "how this works", "core principles", "review process"]);
+  const examples = findCodeBlocks(body).slice(0, 3);
+  const firstParagraph = extractFirstParagraph(body);
+  return {
+    filePath: rel,
+    language: langForFile(rel),
+    content: raw,
+    frontmatter: fm,
+    sections,
+    whenToUse: whenToUse ? whenToUse.body.trim() : null,
+    howItWorks: howItWorks ? howItWorks.body.trim() : null,
+    examples,
+    firstParagraph,
+  };
+}
+
+function parseMarkdownSections(body: string): MarkdownSection[] {
+  const lines = body.split("\n");
+  const sections: MarkdownSection[] = [];
+  let current: MarkdownSection | null = null;
+  let bodyBuf: string[] = [];
+  let bullets: string[] = [];
+
+  const flush = () => {
+    if (current) {
+      current.body = bodyBuf.join("\n").trim();
+      current.bullets = bullets;
+      sections.push(current);
+    }
+  };
+
+  for (const line of lines) {
+    const h = line.match(/^(#{1,4})\s+(.+)$/);
+    if (h) {
+      flush();
+      current = {
+        heading: h[2].trim(),
+        level: h[1].length,
+        body: "",
+        bullets: [],
+      };
+      bodyBuf = [];
+      bullets = [];
+      continue;
+    }
+    if (!current) continue;
+    const bullet = line.match(/^\s*[-*]\s+(.+)$/);
+    if (bullet) {
+      bullets.push(bullet[1].trim());
+    }
+    bodyBuf.push(line);
+  }
+  flush();
+  return sections;
+}
+
+function findSection(sections: MarkdownSection[], names: string[]): MarkdownSection | null {
+  for (const s of sections) {
+    if (names.some((n) => s.heading.toLowerCase().includes(n))) return s;
+  }
+  return null;
+}
+
+function findCodeBlocks(body: string): string[] {
+  const blocks: string[] = [];
+  const re = /```[\s\S]*?```/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(body)) !== null) {
+    blocks.push(m[0]);
+  }
+  return blocks;
+}
+
+function extractFirstParagraph(body: string): string {
+  const lines = body.split("\n");
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t || t.startsWith("#") || t.startsWith("---") || t.startsWith("```")) continue;
+    if (t.startsWith("|") || t.match(/^\s*[-*]\s+/)) continue;
+    return t;
+  }
+  return "";
+}
+
+// ---------------------------------------------------------------------------
+// Random item (for the "discover" button)
+// ---------------------------------------------------------------------------
+
+export interface RandomItem {
+  type: CatalogType;
+  slug: string;
+  name: string;
+  description: string;
+  filePath: string;
+}
+
+export async function getRandomItem(): Promise<RandomItem | null> {
+  const catalog = await getCatalog();
+  const pool: { type: CatalogType; items: CatalogItem[] }[] = [
+    { type: "agents", items: catalog.agents },
+    { type: "skills", items: catalog.skills },
+    { type: "commands", items: catalog.commands },
+  ];
+  const weighted = pool.find((p) => p.items.length > 0);
+  if (!weighted) return null;
+  const item = weighted.items[Math.floor(Math.random() * weighted.items.length)];
+  return {
+    type: weighted.type,
+    slug: item.slug,
+    name: item.name,
+    description: item.description,
+    filePath: item.filePath,
+  };
+}

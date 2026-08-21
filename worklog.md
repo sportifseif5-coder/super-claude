@@ -144,3 +144,84 @@ Stage Summary:
   hooks.json raw viewer with JSON path highlighting, ecc2 harness-eval playground
   simulator, keyboard shortcut help overlay (?), shareable deep links to specific
   agents/skills.
+
+---
+Task ID: 7 (recurring webDevReview round 2)
+Agent: main (Z.ai Code)
+Task: QA pass + new features (Item Detail Modal, Architecture Diagram, Scroll Spy, Discover button) + styling polish addressing VLM round-1 issues.
+
+Work Log:
+- Reviewed worklog (round 1 state: 8 sections, 4 interactive features, contrast fixed).
+- QA via agent-browser + VLM: full-page screenshot assessed. VLM identified 3 issues:
+  (a) excessive vertical spacing / dead zones, (b) monotonous density (wall of text),
+  (c) low contrast on borders/dense areas.
+
+NEW BACKEND (scanner + APIs):
+- Extended src/lib/ecc-scanner.ts with:
+  - getItemDetail(rel): parses a markdown file into structured ItemDetail — frontmatter,
+    MarkdownSection[] (heading/level/body/bullets), whenToUse (extracted from
+    "When to Use"/"When to Activate" sections), howItWorks (from "How it Works"/
+    "Core Principles"/"Review Process"), examples (first 3 code blocks),
+    firstParagraph. 53 sections parsed for tdd-workflow SKILL.md.
+  - getRandomItem(): picks a random agent/skill/command for the Discover button.
+- Created 2 new API routes:
+  /api/ecc/detail (force-dynamic, needed for query param) — returns ItemDetail.
+  /api/ecc/random (force-dynamic) — returns a random catalog item.
+- Fixed: force-static routes with dynamic query params were returning "Missing path
+  parameter" due to static caching; switched detail+random to force-dynamic.
+
+NEW FRONTEND (4 new components):
+- src/components/ecc/item-detail-modal.tsx: full-screen deep-dive modal with:
+  - header (type badge, file path, name, description, close button);
+  - frontmatter chip row;
+  - first-paragraph callout (amber left border);
+  - "When to Use" + "How it Works" cards (amber/emerald accents);
+  - first code example;
+  - section index (scrollable, hierarchical # markers);
+  - collapsible "Full source" with code viewer;
+  - Esc-to-close, loading skeletons;
+  - exports DiscoverButton (fetches /api/ecc/random).
+- src/components/ecc/architecture-diagram.tsx: interactive 4-layer stacked diagram
+  (Harness → Adapter → Durable Layer → Source Repo) with color-coded cards
+  (sky/violet/amber/emerald), item chips with counts (skills/286, agents/68,
+  hooks/23, rules/121, memory/3), hover/tap to activate, golden-rule callout.
+- src/components/ecc/scroll-spy.tsx: fixed left-side table-of-contents (xl+)
+  with scroll-spy active-section highlighting, appears after scrolling past hero.
+- Refactored catalog-browser.tsx: right panel now a PreviewPanel that prompts
+  "Open deep-dive" → opens ItemDetailModal (replaces the old inline ItemDetail).
+
+PAGE INTEGRATION:
+- Home component: added detailItem state + ItemDetailModal + ScrollSpy.
+- Hero: added Discover button (calls /api/ecc/random → opens modal).
+- Architecture section: added ArchitectureDiagram after the principle cards.
+- Catalog: accepts onSelect, passes to CatalogBrowser → modal.
+- Header nav: added Hooks + MCP links.
+
+SELF-VERIFICATION (agent-browser + VLM):
+- Discover button: present, click opens deep-dive modal (VLM-verified: "When to Use"
+  + "How it Works" cards side-by-side, section index, code block, close button,
+  "no rendering bugs, layout clean").
+- Architecture diagram: 4 stacked layer cards render with colored icons + item chips
+  (VLM-verified: "skills/286, agents/68, hooks/23, rules/121, memory/3" + harnesses).
+- Scroll spy: nav[aria-label="On this page"] present after scroll.
+- Catalog: clicking an agent shows PreviewPanel with "Open deep-dive" button.
+- Mobile (390x844): reloads cleanly.
+- Lint: 0 errors. Dev log: all routes 200 (overview/catalog/file/hooks/mcp/search/
+  detail/random), no runtime errors.
+- Final VLM full-page polish rating: 9/10 — "highly professional, resembling a
+  premium developer tool like Vercel or Linear. Successfully balances high information
+  density with readability." Earlier issues (monotonous density, spacing, contrast)
+  all resolved.
+
+Stage Summary:
+- App now has 8 sections + 4 new interactive features this round:
+  (1) Item Detail Modal (deep-dive with parsed sections),
+  (2) Architecture Diagram (interactive 4-layer viz),
+  (3) Scroll Spy (table-of-contents),
+  (4) Discover button (random item).
+- 2 new API endpoints: /api/ecc/detail, /api/ecc/random.
+- Total API endpoints: 7 (overview, catalog, file, hooks, mcp, search, detail, random).
+- VLM polish rating improved to 9/10.
+- Next phase candidates: hooks.json raw JSON viewer with path highlighting,
+  ecc2 harness-eval playground simulator, keyboard shortcut help overlay (?),
+  shareable deep links (#agent/<slug>), comparison view (diff two agents side by side).
