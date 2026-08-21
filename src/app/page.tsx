@@ -44,6 +44,8 @@ import { ScrollSpy } from "@/components/ecc/scroll-spy";
 import { CompareModal } from "@/components/ecc/compare-modal";
 import { ShortcutHelp } from "@/components/ecc/shortcut-help";
 import { StatsChart } from "@/components/ecc/stats-chart";
+import { ArchCard } from "@/components/ecc/arch-card";
+import { ReadingProgress } from "@/components/ecc/reading-progress";
 import type {
   Overview,
   CatalogResponse,
@@ -79,6 +81,19 @@ export default function Home() {
         setSections(fileIdx.sections ?? []);
         setNotableFiles(fileIdx.notableFiles ?? []);
         setCatalogLoading(false);
+        // Handle deep links: #agent/<slug>, #skill/<slug>, #command/<slug>
+        const hash = window.location.hash.slice(1);
+        const m = hash.match(/^(agent|skill|command|rule)\/(.+)$/);
+        if (m) {
+          const type = `${m[1]}s` as "agents" | "skills" | "commands" | "rules";
+          const slug = decodeURIComponent(m[2]);
+          const items = (cat[type] as CatalogItem[]) ?? [];
+          const found = items.find((it) => it.slug === slug);
+          if (found) {
+            // Defer to next tick to ensure state is ready
+            setTimeout(() => setDetailItem(found), 0);
+          }
+        }
       })
       .catch((e) => setError(e.message));
   }, []);
@@ -191,8 +206,20 @@ export default function Home() {
     setCompareOpen(true);
   };
 
+  // Update URL hash when detail modal opens (shareable deep links)
+  React.useEffect(() => {
+    if (detailItem) {
+      const type = detailItem.type.replace(/s$/, "");
+      const url = `#${type}/${detailItem.slug}`;
+      if (window.location.hash !== url) {
+        history.replaceState(null, "", url);
+      }
+    }
+  }, [detailItem]);
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <ReadingProgress />
       <ScrollSpy />
       <Header
         overview={overview}
@@ -577,7 +604,7 @@ function Architecture({
           </div>
         )}
 
-        {/* Architecture cards */}
+        {/* Architecture cards (progressive disclosure) */}
         <div className="grid gap-4 lg:grid-cols-2">
           {sections.length === 0
             ? Array.from({ length: 6 }).map((_, i) => (
@@ -586,45 +613,13 @@ function Architecture({
             : sections.map((s, i) => {
                 const Icon = sectionIcons[s.id] ?? Layers;
                 return (
-                  <motion.div
+                  <ArchCard
                     key={s.id}
-                    initial={{ opacity: 0, y: 16 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-60px" }}
-                    transition={{ duration: 0.35, delay: (i % 2) * 0.08 }}
-                  >
-                    <Card className="h-full">
-                      <CardHeader>
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                            <Icon className="h-4.5 w-4.5" />
-                          </div>
-                          <CardTitle className="text-base">{s.title}</CardTitle>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <p className="text-sm text-muted-foreground">{s.summary}</p>
-                        <ul className="mt-3 space-y-1.5">
-                          {s.bullets.map((b, j) => (
-                            <li key={j} className="flex gap-2 text-sm">
-                              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/70" />
-                              <span>{b}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        {s.code && (
-                          <div className="mt-3">
-                            <CodeBlock
-                              code={s.code.snippet}
-                              language={s.code.language}
-                              maxHeight={200}
-                              showHeader={false}
-                            />
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </motion.div>
+                    section={s}
+                    index={i}
+                    icon={Icon}
+                    defaultOpen={i < 2}
+                  />
                 );
               })}
         </div>

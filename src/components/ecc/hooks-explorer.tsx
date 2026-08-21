@@ -12,11 +12,13 @@ import {
   Clock,
   ArrowRight,
   Filter,
+  FileJson,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CodeBlock } from "./code-block";
 import type { HookEntry, HooksData } from "./types";
 
 const PHASE_COLORS: Record<string, string> = {
@@ -43,6 +45,8 @@ export function HooksExplorer() {
   const [activeEvent, setActiveEvent] = React.useState<string | "all">("all");
   const [activePhase, setActivePhase] = React.useState<string | "all">("all");
   const [selected, setSelected] = React.useState<HookEntry | null>(null);
+  const [view, setView] = React.useState<"cards" | "raw">("cards");
+  const [rawContent, setRawContent] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     fetch("/api/ecc/hooks")
@@ -53,6 +57,15 @@ export function HooksExplorer() {
       })
       .catch(() => setLoading(false));
   }, []);
+
+  React.useEffect(() => {
+    if (view === "raw" && rawContent === null) {
+      fetch("/api/ecc/hooks-raw")
+        .then((r) => r.json())
+        .then((d) => setRawContent(d.content ?? ""))
+        .catch(() => setRawContent(""));
+    }
+  }, [view, rawContent]);
 
   const filtered = React.useMemo(() => {
     if (!data) return [];
@@ -161,11 +174,54 @@ export function HooksExplorer() {
               </Button>
             ))}
           </div>
+          <div className="flex items-center gap-0.5 rounded-md border border-border bg-muted/40 p-0.5">
+            <button
+              type="button"
+              onClick={() => setView("cards")}
+              className={cn(
+                "rounded px-2 py-1 text-xs font-medium transition-colors",
+                view === "cards" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Cards
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("raw")}
+              className={cn(
+                "rounded px-2 py-1 text-xs font-medium transition-colors",
+                view === "raw" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Raw JSON
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Hook grid */}
-      {loading ? (
+      {/* Hook grid OR raw JSON */}
+      {view === "raw" ? (
+        <div className="rounded-xl border border-border bg-card">
+          <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+            <div className="flex items-center gap-2">
+              <FileJson className="h-4 w-4 text-primary" />
+              <span className="font-mono text-xs text-muted-foreground">hooks/hooks.json</span>
+            </div>
+            <span className="font-mono text-[0.65rem] text-muted-foreground">
+              {rawContent ? `${rawContent.split("\n").length} lines` : "loading…"}
+            </span>
+          </div>
+          <div className="p-3">
+            {rawContent === null ? (
+              <div className="flex items-center justify-center py-12 text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading raw JSON…
+              </div>
+            ) : (
+              <CodeBlock code={rawContent} language="json" label="hooks/hooks.json" maxHeight={600} showHeader={false} />
+            )}
+          </div>
+        </div>
+      ) : loading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground">
           <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Parsing hooks.json…
         </div>

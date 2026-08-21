@@ -16,6 +16,7 @@ import {
   ExternalLink,
   Copy,
   Check,
+  Share2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -99,6 +100,7 @@ export function ItemDetailModal({ item, onClose }: ItemDetailModalProps) {
                 )}
               </div>
               <div className="flex shrink-0 items-center gap-1">
+                <ShareButton item={item} />
                 <CopyPathButton path={item.filePath} />
                 <a
                   href={`https://github.com/affaan-m/ecc/blob/main/${item.filePath}`}
@@ -381,6 +383,36 @@ function CopyPathButton({ path }: { path: string }) {
       title="Copy file path"
     >
       {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+    </button>
+  );
+}
+
+function ShareButton({ item }: { item: CatalogItem }) {
+  const [shared, setShared] = React.useState(false);
+  const share = async () => {
+    const type = item.type.replace(/s$/, "");
+    const url = `${window.location.origin}${window.location.pathname}#${type}/${item.slug}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: item.name, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setShared(true);
+      setTimeout(() => setShared(false), 1800);
+    } catch {
+      /* user cancelled or no clipboard */
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={share}
+      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+      aria-label="Share deep link"
+      title="Share deep link"
+    >
+      {shared ? <Check className="h-4 w-4 text-emerald-500" /> : <Share2 className="h-4 w-4" />}
     </button>
   );
 }

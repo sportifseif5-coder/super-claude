@@ -784,6 +784,21 @@ export async function getHooks(): Promise<HooksData> {
   return hooksCache;
 }
 
+let hooksRawCache: string | null = null;
+
+export async function getHooksRaw(): Promise<string> {
+  if (hooksRawCache) return hooksRawCache;
+  const raw = await readText("hooks/hooks.json").catch(() => "{}");
+  // Pretty-print if not already
+  try {
+    const parsed = JSON.parse(raw);
+    hooksRawCache = JSON.stringify(parsed, null, 2);
+  } catch {
+    hooksRawCache = raw;
+  }
+  return hooksRawCache;
+}
+
 // ---------------------------------------------------------------------------
 // MCP catalog (structured parse of mcp-configs/mcp-servers.json)
 // ---------------------------------------------------------------------------

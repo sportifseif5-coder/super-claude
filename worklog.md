@@ -304,3 +304,72 @@ Stage Summary:
 - Next phase candidates: progressive disclosure/accordion for architecture cards, hooks.json
   raw JSON viewer with path highlighting, ecc2 harness-eval playground simulator, shareable
   deep links (#agent/<slug>).
+
+---
+Task ID: 9 (recurring webDevReview round 4)
+Agent: main (Z.ai Code)
+Task: QA + new features (progressive disclosure accordion, shareable deep links, hooks raw JSON viewer, reading progress bar, share button) + styling polish.
+
+Work Log:
+- Reviewed worklog (round 3: 12 interactive features, 9 API endpoints, full keyboard nav).
+- QA via agent-browser + VLM: app stable, no errors. VLM suggested bento grid + glassmorphism
+  + progressive disclosure for architecture cards.
+
+NEW BACKEND:
+- Extended scanner with getHooksRaw(): pretty-prints hooks/hooks.json (291 lines).
+- Created /api/ecc/hooks-raw (force-dynamic) endpoint returning {content, language}.
+
+NEW FRONTEND (4 new components + enhancements):
+- src/components/ecc/arch-card.tsx: progressive disclosure accordion card for architecture
+  sections. Collapsible (animated height), first 2 cards open by default, collapsed cards
+  show "+N details" expand hint, expanded cards show "Collapse" button. Hover lift + icon scale.
+- src/components/ecc/reading-progress.tsx: fixed top gradient progress bar (primary→orange→
+  amber) that fills as user scrolls, appears after 100px scroll, uses transform scaleX.
+- Enhanced hooks-explorer.tsx: added Cards/Raw JSON view toggle. Raw JSON view shows the
+  full hooks/hooks.json with syntax highlighting + line count + file path header.
+- Enhanced item-detail-modal.tsx: added ShareButton (uses navigator.share if available,
+  else copies deep link to clipboard with check feedback).
+
+DEEP LINKS (shareable URLs):
+- On page load: parses #agent/<slug>, #skill/<slug>, #command/<slug>, #rule/<slug> from
+  URL hash and auto-opens the detail modal for that item (setTimeout deferred to ensure
+  state is ready).
+- When detail modal opens: updates URL hash to #<type>/<slug> via history.replaceState so
+  the URL is shareable.
+- ShareButton in modal header copies the deep link URL to clipboard.
+- Verified: http://localhost:3000/#agent/code-reviewer opens code-reviewer detail modal
+  automatically on load (VLM-confirmed: modal visible, all action buttons, When to Use +
+  How it Works cards, no bugs).
+
+PAGE INTEGRATION:
+- Architecture section: replaced inline cards with ArchCard components (progressive disclosure).
+- Home: added ReadingProgress at top, deep-link handling in data-load useEffect.
+- Refactored deep-link logic into the useEffect (was causing lint error as separate function).
+
+SELF-VERIFICATION (agent-browser + VLM):
+- Progressive disclosure: first 2 arch cards expanded (show "Collapse"), rest collapsed (show
+  "5 details"/"4 details"); clicking a collapsed card expands it.
+- Reading progress bar: appears on scroll.
+- Hooks raw JSON: Cards/Raw JSON toggle works; raw view shows hooks/hooks.json with syntax
+  highlighting (VLM: "Raw JSON view active, file path visible, content readable").
+- Deep links: #agent/code-reviewer opens modal automatically (VLM: "modal visible, code-reviewer
+  heading, Share/Copy/GitHub buttons, When to Use + How it Works cards, no bugs").
+- Share button: present in modal header.
+- Mobile (390x844): reloads cleanly, deep link persists.
+- Lint: 0 errors. Dev log: all 10 routes 200 (overview/catalog/file/hooks/hooks-raw/mcp/search/
+  detail/random/compare), no runtime errors.
+- Final VLM full-page rating: 8/10 (full-page screenshot inflates density; scroll experience
+  is excellent with progressive disclosure + scroll spy + reading progress).
+
+Stage Summary:
+- App now has 8 sections + 16 interactive features total:
+  Catalog browser, Hooks Explorer (+raw JSON), MCP Catalog, Command Palette, Provider Radar,
+  Item Detail Modal (+share/copy/github), Architecture Diagram, Scroll Spy, Discover button,
+  Compare modal, Shortcut help overlay, Stats bar chart, Progressive disclosure arch cards,
+  Reading progress bar, Shareable deep links.
+- 10 API endpoints: overview, catalog, file, hooks, hooks-raw, mcp, search, detail, random,
+  compare.
+- Shareable URLs (#agent/<slug>) auto-open detail modals.
+- Next phase candidates: bento grid layout for stats/principles, glassmorphism effects,
+  ecc2 harness-eval playground simulator, agent/skill relationship graph (which agents use
+  which skills), dark/light theme persistence in URL.
