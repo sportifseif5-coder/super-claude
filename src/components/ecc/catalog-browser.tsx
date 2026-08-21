@@ -12,6 +12,7 @@ import {
   Loader2,
   X,
   ArrowRight,
+  GitCompare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -30,9 +31,10 @@ interface CatalogBrowserProps {
   catalog: { agents: CatalogItem[]; skills: CatalogItem[]; commands: CatalogItem[]; rules: CatalogItem[] } | null;
   loading: boolean;
   onSelect?: (item: CatalogItem) => void;
+  onCompare?: (item: CatalogItem) => void;
 }
 
-export function CatalogBrowser({ catalog, loading, onSelect }: CatalogBrowserProps) {
+export function CatalogBrowser({ catalog, loading, onSelect, onCompare }: CatalogBrowserProps) {
   const [activeTab, setActiveTab] = React.useState<CatalogType>("agents");
   const [query, setQuery] = React.useState("");
   const [selected, setSelected] = React.useState<CatalogItem | null>(null);
@@ -190,6 +192,7 @@ export function CatalogBrowser({ catalog, loading, onSelect }: CatalogBrowserPro
               key={selected.slug}
               item={selected}
               onOpen={() => onSelect?.(selected)}
+              onCompare={onCompare ? () => onCompare(selected) : undefined}
             />
           ) : (
             <motion.div
@@ -216,7 +219,15 @@ export function CatalogBrowser({ catalog, loading, onSelect }: CatalogBrowserPro
   );
 }
 
-function PreviewPanel({ item, onOpen }: { item: CatalogItem; onOpen: () => void }) {
+function PreviewPanel({
+  item,
+  onOpen,
+  onCompare,
+}: {
+  item: CatalogItem;
+  onOpen: () => void;
+  onCompare?: () => void;
+}) {
   const fmEntries = Object.entries(item.extra).filter(
     ([k]) => k !== "name" && k !== "description",
   );
@@ -268,10 +279,17 @@ function PreviewPanel({ item, onOpen }: { item: CatalogItem; onOpen: () => void 
             code examples, a section index, and the complete source.
           </p>
         </div>
-        <Button onClick={onOpen} size="sm">
-          Open deep-dive
-          <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-        </Button>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <Button onClick={onOpen} size="sm">
+            Open deep-dive
+            <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+          </Button>
+          {onCompare && (
+            <Button onClick={onCompare} variant="outline" size="sm">
+              <GitCompare className="mr-1.5 h-3.5 w-3.5" /> Compare
+            </Button>
+          )}
+        </div>
       </div>
     </motion.div>
   );

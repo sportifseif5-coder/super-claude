@@ -166,3 +166,16 @@ export interface RandomItem {
   description: string;
   filePath: string;
 }
+
+/* Compare */
+export interface CompareItem extends ItemDetail {
+  name: string;
+  type: CatalogType;
+  slug: string;
+  description: string;
+}
+
+export interface CompareResult {
+  a: CompareItem | null;
+  b: CompareItem | null;
+}

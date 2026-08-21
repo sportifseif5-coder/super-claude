@@ -1056,3 +1056,47 @@ export async function getRandomItem(): Promise<RandomItem | null> {
     filePath: item.filePath,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Comparison: structured detail for two items, side by side
+// ---------------------------------------------------------------------------
+
+export interface CompareItem extends ItemDetail {
+  name: string;
+  type: CatalogType;
+  slug: string;
+  description: string;
+}
+
+export interface CompareResult {
+  a: CompareItem | null;
+  b: CompareItem | null;
+}
+
+export async function getCompare(
+  pathA: string,
+  pathB: string,
+): Promise<CompareResult> {
+  const [a, b] = await Promise.all([
+    getItemDetail(pathA).then((d) => (d ? { ...d, name: pathA, type: "agents" as CatalogType, slug: pathA, description: "" } : null)),
+    getItemDetail(pathB).then((d) => (d ? { ...d, name: pathB, type: "agents" as CatalogType, slug: pathB, description: "" } : null)),
+  ]);
+  // Enrich with catalog metadata
+  const catalog = await getCatalog();
+  const enrich = (item: CompareItem | null): CompareItem | null => {
+    if (!item) return null;
+    const all = [...catalog.agents, ...catalog.skills, ...catalog.commands, ...catalog.rules];
+    const found = all.find((c) => c.filePath === item.filePath);
+    if (found) {
+      return {
+        ...item,
+        name: found.name,
+        type: found.type,
+        slug: found.slug,
+        description: found.description,
+      };
+    }
+    return item;
+  };
+  return { a: enrich(a), b: enrich(b) };
+}

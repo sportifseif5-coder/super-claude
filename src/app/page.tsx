@@ -23,6 +23,8 @@ import {
   Zap,
   Command as CommandIcon,
   Search as SearchIcon,
+  GitCompare,
+  Keyboard as KeyboardIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -39,6 +41,9 @@ import { ProviderChart } from "@/components/ecc/provider-chart";
 import { ItemDetailModal, DiscoverButton } from "@/components/ecc/item-detail-modal";
 import { ArchitectureDiagram } from "@/components/ecc/architecture-diagram";
 import { ScrollSpy } from "@/components/ecc/scroll-spy";
+import { CompareModal } from "@/components/ecc/compare-modal";
+import { ShortcutHelp } from "@/components/ecc/shortcut-help";
+import { StatsChart } from "@/components/ecc/stats-chart";
 import type {
   Overview,
   CatalogResponse,
@@ -56,6 +61,10 @@ export default function Home() {
   const [error, setError] = React.useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   const [detailItem, setDetailItem] = React.useState<CatalogItem | null>(null);
+  const [compareOpen, setCompareOpen] = React.useState(false);
+  const [compareA, setCompareA] = React.useState<CatalogItem | null>(null);
+  const [compareB, setCompareB] = React.useState<CatalogItem | null>(null);
+  const [helpOpen, setHelpOpen] = React.useState(false);
 
   React.useEffect(() => {
     Promise.all([
@@ -74,22 +83,123 @@ export default function Home() {
       .catch((e) => setError(e.message));
   }, []);
 
-  // Cmd+K / Ctrl+K to toggle command palette
+  // Global keyboard shortcuts
   React.useEffect(() => {
+    let lastG = 0;
     const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const typing = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+
+      // Cmd+K / Ctrl+K — always
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setPaletteOpen((o) => !o);
+        return;
+      }
+      if (typing) return;
+      // Don't trigger single-key shortcuts when a modal/overlay is open
+      const anyOpen = paletteOpen || detailItem || compareOpen || helpOpen;
+      if (anyOpen) return;
+
+      // ? → help
+      if (e.key === "?" || (e.shiftKey && e.key === "/")) {
+        e.preventDefault();
+        setHelpOpen((o) => !o);
+        return;
+      }
+      // d → discover
+      if (e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        document.dispatchEvent(new CustomEvent("ecc:discover"));
+        return;
+      }
+      // t → toggle theme
+      if (e.key.toLowerCase() === "t") {
+        e.preventDefault();
+        document.dispatchEvent(new CustomEvent("ecc:toggle-theme"));
+        return;
+      }
+      // c → compare
+      if (e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        setCompareOpen(true);
+        return;
+      }
+      // g followed by letter → jump
+      if (e.key.toLowerCase() === "g") {
+        lastG = Date.now();
+        return;
+      }
+      if (lastG && Date.now() - lastG < 800) {
+        const map: Record<string, string> = {
+          a: "catalog",
+          s: "catalog",
+          h: "hooks-explorer",
+          m: "mcp",
+          c: "catalog",
+          o: "source",
+          r: "architecture",
+        };
+        const id = map[e.key.toLowerCase()];
+        if (id) {
+          e.preventDefault();
+          document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+        lastG = 0;
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, [paletteOpen, detailItem, compareOpen, helpOpen]);
+
+  // Listen for discover events (from keyboard + button)
+  React.useEffect(() => {
+    const handler = async () => {
+      try {
+        const r = await fetch("/api/ecc/random");
+        const d = await r.json();
+        if (d.filePath) {
+          setDetailItem({
+            name: d.name,
+            slug: d.slug,
+            type: d.type,
+            description: d.description,
+            filePath: d.filePath,
+            extra: {},
+          });
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+    document.addEventListener("ecc:discover", handler);
+    return () => document.removeEventListener("ecc:discover", handler);
   }, []);
+
+  // Listen for theme toggle events
+  React.useEffect(() => {
+    const handler = () => {
+      document.documentElement.classList.toggle("dark");
+    };
+    document.addEventListener("ecc:toggle-theme", handler);
+    return () => document.removeEventListener("ecc:toggle-theme", handler);
+  }, []);
+
+  const openCompare = (a?: CatalogItem, b?: CatalogItem) => {
+    setCompareA(a ?? null);
+    setCompareB(b ?? null);
+    setCompareOpen(true);
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <ScrollSpy />
-      <Header overview={overview} onOpenPalette={() => setPaletteOpen(true)} />
+      <Header
+        overview={overview}
+        onOpenPalette={() => setPaletteOpen(true)}
+        onOpenCompare={() => openCompare()}
+        onOpenHelp={() => setHelpOpen(true)}
+      />
       <main className="flex-1">
         <Hero
           overview={overview}
@@ -102,6 +212,7 @@ export default function Home() {
           catalog={catalog}
           loading={catalogLoading}
           onSelect={(item) => setDetailItem(item)}
+          onCompare={(item) => openCompare(item)}
         />
         <AIIntegration overview={overview} />
         <HooksExplorerSection />
@@ -116,9 +227,17 @@ export default function Home() {
           </section>
         )}
       </main>
-      <Footer overview={overview} />
+      <Footer overview={overview} onOpenHelp={() => setHelpOpen(true)} />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
       <ItemDetailModal item={detailItem} onClose={() => setDetailItem(null)} />
+      <CompareModal
+        open={compareOpen}
+        onOpenChange={setCompareOpen}
+        catalog={catalog}
+        initialA={compareA}
+        initialB={compareB}
+      />
+      <ShortcutHelp open={helpOpen} onOpenChange={setHelpOpen} />
     </div>
   );
 }
@@ -126,7 +245,17 @@ export default function Home() {
 /* ------------------------------------------------------------------ */
 /* Header                                                              */
 /* ------------------------------------------------------------------ */
-function Header({ overview, onOpenPalette }: { overview: Overview | null; onOpenPalette: () => void }) {
+function Header({
+  overview,
+  onOpenPalette,
+  onOpenCompare,
+  onOpenHelp,
+}: {
+  overview: Overview | null;
+  onOpenPalette: () => void;
+  onOpenCompare: () => void;
+  onOpenHelp: () => void;
+}) {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
@@ -172,6 +301,24 @@ function Header({ overview, onOpenPalette }: { overview: Overview | null; onOpen
               <CommandIcon className="h-2.5 w-2.5" />K
             </kbd>
           </button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onOpenCompare}
+            className="hidden h-8 px-2 text-xs md:inline-flex"
+            aria-label="Compare two items"
+          >
+            <GitCompare className="mr-1 h-3.5 w-3.5" /> Compare
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onOpenHelp}
+            aria-label="Keyboard shortcuts"
+          >
+            <KeyboardIcon className="h-4 w-4" />
+          </Button>
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
             <a
               href="https://github.com/affaan-m/ecc"
@@ -359,6 +506,10 @@ function Stats({ overview }: { overview: Overview | null }) {
             );
           })}
         </div>
+        {/* Assets-by-type bar chart */}
+        <div className="mt-6">
+          <StatsChart overview={overview} />
+        </div>
       </div>
     </section>
   );
@@ -494,10 +645,12 @@ function Catalog({
   catalog,
   loading,
   onSelect,
+  onCompare,
 }: {
   catalog: CatalogResponse | null;
   loading: boolean;
   onSelect: (item: CatalogItem) => void;
+  onCompare: (item: CatalogItem) => void;
 }) {
   return (
     <section id="catalog" className="scroll-mt-16 border-b border-border py-16 sm:py-20">
@@ -508,7 +661,7 @@ function Catalog({
           subtitle="Every asset is a markdown file with YAML frontmatter. Browse, search, and click any item to open a deep-dive modal with parsed “When to Use”, examples, a section index, and the full source."
         />
         <div className="mt-8">
-          <CatalogBrowser catalog={catalog} loading={loading} onSelect={onSelect} />
+          <CatalogBrowser catalog={catalog} loading={loading} onSelect={onSelect} onCompare={onCompare} />
         </div>
       </div>
     </section>
@@ -895,7 +1048,7 @@ function SectionHeading({
 /* ------------------------------------------------------------------ */
 /* Footer                                                              */
 /* ------------------------------------------------------------------ */
-function Footer({ overview }: { overview: Overview | null }) {
+function Footer({ overview, onOpenHelp }: { overview: Overview | null; onOpenHelp: () => void }) {
   return (
     <footer className="mt-auto border-t border-border bg-card/50">
       <div className="mx-auto max-w-6xl px-4 py-8">
@@ -914,6 +1067,14 @@ function Footer({ overview }: { overview: Overview | null }) {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+            <button
+              type="button"
+              onClick={onOpenHelp}
+              className="inline-flex items-center gap-1 hover:text-foreground"
+            >
+              <KeyboardIcon className="h-3 w-3" /> Shortcuts
+              <kbd className="rounded border border-border bg-muted px-1 font-mono text-[0.6rem]">?</kbd>
+            </button>
             <span>
               Source:{" "}
               <a

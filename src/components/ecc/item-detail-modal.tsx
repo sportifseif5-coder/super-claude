@@ -13,6 +13,9 @@ import {
   Code2,
   Hash,
   Tag,
+  ExternalLink,
+  Copy,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -95,15 +98,28 @@ export function ItemDetailModal({ item, onClose }: ItemDetailModalProps) {
                   <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
                 )}
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="shrink-0"
-                onClick={onClose}
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex shrink-0 items-center gap-1">
+                <CopyPathButton path={item.filePath} />
+                <a
+                  href={`https://github.com/affaan-m/ecc/blob/main/${item.filePath}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                  aria-label="Open on GitHub"
+                  title="Open on GitHub"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={onClose}
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             {/* Body */}
@@ -342,5 +358,29 @@ export function DiscoverButton({
       )}
       Discover
     </Button>
+  );
+}
+
+function CopyPathButton({ path }: { path: string }) {
+  const [copied, setCopied] = React.useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(path);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* ignore */
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+      aria-label="Copy file path"
+      title="Copy file path"
+    >
+      {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+    </button>
   );
 }

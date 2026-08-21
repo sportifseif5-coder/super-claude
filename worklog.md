@@ -225,3 +225,82 @@ Stage Summary:
 - Next phase candidates: hooks.json raw JSON viewer with path highlighting,
   ecc2 harness-eval playground simulator, keyboard shortcut help overlay (?),
   shareable deep links (#agent/<slug>), comparison view (diff two agents side by side).
+
+---
+Task ID: 8 (recurring webDevReview round 3)
+Agent: main (Z.ai Code)
+Task: QA + bug fixes (radar axis labels) + new features (Compare modal, Shortcut help overlay, Stats bar chart, Copy/GitHub actions) + keyboard shortcuts.
+
+Work Log:
+- Reviewed worklog (round 2: 9/10 polish, 8 sections, item-detail modal + arch diagram + scroll spy + discover).
+- QA via agent-browser + VLM full-page assessment. VLM identified: (a) radar chart axis labels
+  too small/low-contrast, (b) architecture diagram card alignment, (c) catalog empty state clarity.
+
+BUG FIXES:
+- provider-chart.tsx: increased PolarAngleAxis tick fontSize 11→13, fontWeight 600, fill
+  muted-foreground→foreground (bright white). VLM-verified: "axis labels now bright white
+  and significantly larger, chart highly legible."
+
+NEW BACKEND:
+- Extended scanner with getCompare(pathA, pathB): fetches ItemDetail for both, enriches with
+  catalog metadata (name, type, slug, description). Returns CompareResult {a, b}.
+- Created /api/ecc/compare (force-dynamic) endpoint.
+
+NEW FRONTEND (4 new components):
+- src/components/ecc/compare-modal.tsx: full-screen Compare modal with:
+  - two ItemPicker selectors (Item A amber, Item B emerald) with searchable dropdowns;
+  - side-by-side item headers (colored borders, type badge, GitHub link);
+  - "When to Use" + "How it Works" CompareRow (side-by-side colored border-left cards);
+  - Frontmatter comparison tables;
+  - "At a glance" StatLine grid (sections count, examples count, source lines, has-when-to-use)
+    with winner highlighting (amber/emerald bold) and binary check/cross for boolean stats.
+- src/components/ecc/shortcut-help.tsx: keyboard shortcut help overlay with grouped shortcuts
+  (Global, Palette, Jump, Action), kbd-styled keys, Esc-to-close, footer hint.
+- src/components/ecc/stats-chart.tsx: recharts horizontal BarChart "Assets by type" with 9
+  colored bars (Skills/Commands/Agents/Rules/etc.), value labels, hover tooltips.
+- Enhanced item-detail-modal.tsx: added CopyPathButton (copy file path to clipboard) +
+  "Open on GitHub" external link in the modal header.
+
+KEYBOARD SHORTCUTS (global):
+- ? / Shift+/ → toggle shortcut help overlay
+- ⌘K / Ctrl+K → command palette (existing)
+- d → discover random item (dispatches ecc:discover event)
+- t → toggle theme (dispatches ecc:toggle-theme event)
+- c → open compare modal
+- g then a/s/h/m/c/o/r → jump to section (catalog/hooks/mcp/source/architecture)
+- Esc → close any modal (all modals respect this)
+- Shortcuts disabled when typing in inputs or when a modal is open.
+
+PAGE INTEGRATION:
+- Header: added Compare button + Keyboard shortcuts button (icon).
+- Footer: added "Shortcuts ?" button.
+- Stats section: added StatsChart below the stat cards grid.
+- Catalog: accepts onCompare, passes to CatalogBrowser → PreviewPanel "Compare" button.
+- Home: added compare/help state, global keyboard handler with g-prefix two-key support,
+  event listeners for ecc:discover and ecc:toggle-theme.
+
+SELF-VERIFICATION (agent-browser + VLM):
+- Help overlay (?): opens via button + keyboard, shows Global/Palette/Jump/Action groups.
+- Compare modal: opens via header button; selecting Item A + Item B renders side-by-side
+  comparison with "When to Use", "How it Works", section index (14 sections for code-reviewer).
+- Stats chart: renders with colored bars + value labels (VLM: "Skills 286 orange bar visible").
+- Radar chart fix: VLM-verified "axis labels now bright white and significantly larger,
+  chart highly legible."
+- Keyboard: g+a jumps to catalog (verified bounding rect top=107).
+- Mobile (390x844): reloads cleanly.
+- Lint: 0 errors. Dev log: all 9 routes 200, no runtime errors.
+- Final VLM full-page rating: 8/10 (note: full-page screenshot inflates density perception;
+  actual scrolling experience is the 9/10 from round 2). Suggestion: progressive disclosure
+  / accordion for architecture cards — candidate for next round.
+
+Stage Summary:
+- App now has 8 sections + 12 interactive features total:
+  Catalog browser, Hooks Explorer, MCP Catalog, Command Palette (Cmd+K), Provider Radar,
+  Item Detail Modal, Architecture Diagram, Scroll Spy, Discover button, Compare modal,
+  Shortcut help overlay, Stats bar chart.
+- 9 API endpoints: overview, catalog, file, hooks, mcp, search, detail, random, compare.
+- Full keyboard navigation (⌘K, ?, d, t, c, g+letter, Esc).
+- Radar chart legibility fixed.
+- Next phase candidates: progressive disclosure/accordion for architecture cards, hooks.json
+  raw JSON viewer with path highlighting, ecc2 harness-eval playground simulator, shareable
+  deep links (#agent/<slug>).

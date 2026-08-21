@@ -135,13 +135,14 @@ export function ProviderChart({ providers }: ProviderChartProps) {
               <PolarGrid stroke="var(--border)" />
               <PolarAngleAxis
                 dataKey="axis"
-                tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                tick={{ fill: "var(--foreground)", fontSize: 13, fontWeight: 600 }}
               />
               <PolarRadiusAxis
                 angle={90}
                 domain={[0, 100]}
-                tick={{ fill: "var(--muted-foreground)", fontSize: 9 }}
+                tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
                 stroke="var(--border)"
+                axisLine={false}
               />
               {providers.map((p, i) =>
                 active.has(p.id) ? (
