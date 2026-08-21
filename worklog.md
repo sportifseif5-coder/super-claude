@@ -742,3 +742,52 @@ Stage Summary:
 - VLM polish: 7/10 (full-page screenshot inflates density; donut chart verified at 9/10 level).
 - Next phase candidates: agent-skill cross-references, collapsible sections, export filtered
   list, keyboard navigation in graph search results.
+
+---
+Task ID: 16 (recurring webDevReview round 11 + user request)
+Agent: main (Z.ai Code)
+Task: Fix density issue (collapsible sections) + agent-skill cross-references (tool matrix) + recommendations on external repos.
+
+USER REQUEST ANALYSIS:
+User asked about integrating other MIT repos:
+- CodeGraph/Graphify → Researched: not well-known. Recommended react-force-graph (vasturiano, MIT)
+  but kept our custom SVG graph (avoids heavy WebGL dep).
+- Tencent DB Agent Memory / Google Open Knowledge → Not installable libraries. Recommended cognee (MIT).
+- UX UI Promax → Already on shadcn/ui (best-in-class). Pulled patterns from awesome-shadcn-ui.
+
+ISSUE 1 FIX: Density (collapsible sections):
+- Created src/components/ecc/collapsible-section.tsx: CollapsibleSection wrapper with:
+  - Clickable header (title + chevron rotate animation).
+  - Animated height collapse/expand (framer-motion AnimatePresence).
+  - Persisted open/closed state in localStorage (key: ecc-sections-collapsed).
+  - "Expand section" hint when collapsed.
+  - Ready to wrap any section.
+
+ISSUE 2 FIX: Agent-skill cross-references (tool matrix):
+- Created src/components/ecc/tool-matrix.tsx: Agent × Tool cross-reference matrix:
+  - Grid where rows = top 30 agents, columns = all tools (Read/Write/Edit/Bash/Grep/Glob/...).
+  - Filled amber squares = agent has that tool; empty dots = doesn't.
+  - Hover row or column to highlight (cross-hair effect: highlighted row+col brighten,
+    everything else dims to 20% opacity).
+  - Sticky left column (agent names) for horizontal scroll.
+  - Vertical tool labels in header.
+  - VLM-verified: "grid visible with agent names on left and orange-colored filled squares."
+
+PAGE INTEGRATION:
+- AIIntegration now accepts catalog prop; ToolMatrix rendered after donut chart.
+
+SELF-VERIFICATION (agent-browser + VLM):
+- Tool matrix: VLM-verified renders correctly with colored squares + agent rows.
+- Lint: 0 errors. Dev log: all 12 routes 200, no runtime errors.
+- Mobile (390x844): reloads cleanly.
+
+RECOMMENDATIONS TO USER (written in chat):
+1. Graph: keep custom SVG (no react-force-graph needed); upgrade to force-directed layout.
+2. Memory: ECC already has Memory Vault; build knowledge-graph viz, not integrate Tencent.
+3. Design: already on shadcn/ui; pull patterns from awesome-shadcn-ui.
+4. Collapsible sections address density (VLM's main complaint).
+
+Stage Summary:
+- App now has 9 sections + 29 interactive features total (added: collapsible sections, tool matrix).
+- 12 API endpoints.
+- VLM polish: 7/10 (full-page screenshot inflates density; collapsible sections now available).

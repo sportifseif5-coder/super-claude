@@ -50,6 +50,8 @@ import { ReadingProgress } from "@/components/ecc/reading-progress";
 import { RelationshipGraph } from "@/components/ecc/relationship-graph";
 import { BackToTop } from "@/components/ecc/back-to-top";
 import { ModelDonut } from "@/components/ecc/model-donut";
+import { CollapsibleSection } from "@/components/ecc/collapsible-section";
+import { ToolMatrix } from "@/components/ecc/tool-matrix";
 import type {
   Overview,
   CatalogResponse,
@@ -264,7 +266,7 @@ export default function Home() {
           onCompare={(item) => openCompare(item)}
         />
         <RecentlyViewed items={recentlyViewed} onOpen={openItem} />
-        <AIIntegration overview={overview} />
+        <AIIntegration overview={overview} catalog={catalog} />
         <HooksExplorerSection />
         <HooksMemory overview={overview} sections={sections} />
         <McpCatalogSection />
@@ -753,7 +755,7 @@ function Catalog({
 /* ------------------------------------------------------------------ */
 /* AI Integration                                                      */
 /* ------------------------------------------------------------------ */
-function AIIntegration({ overview }: { overview: Overview | null }) {
+function AIIntegration({ overview, catalog }: { overview: Overview | null; catalog: CatalogResponse | null }) {
   const providers = overview?.providers ?? [];
 
   return (
@@ -880,6 +882,11 @@ function AIIntegration({ overview }: { overview: Overview | null }) {
         <div className="mt-6 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
           {providers.length > 0 && <ProviderChart providers={providers} />}
           <ModelDonut />
+        </div>
+
+        {/* Agent × Tool cross-reference matrix */}
+        <div className="mt-6">
+          <ToolMatrix catalog={catalog} />
         </div>
       </div>
     </section>
