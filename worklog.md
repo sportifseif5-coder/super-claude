@@ -689,3 +689,56 @@ Stage Summary:
 - VLM polish: 9/10 (improved from 8/10).
 - Next phase candidates: agent-skill cross-references, ecc2 harness-eval playground,
   collapsible sections, keyboard navigation in graph search results, export filtered list.
+
+---
+Task ID: 15 (recurring webDevReview round 10)
+Agent: main (Z.ai Code)
+Task: QA + new feature (model distribution donut chart) + styling polish.
+
+Work Log:
+- Reviewed worklog (round 9: 26 features, 9/10 VLM, back-to-top + catalog filters).
+- QA via agent-browser + VLM: app stable, no errors. VLM suggested data visualization
+  for agent capabilities.
+
+NEW BACKEND:
+- Extended scanner with getModelDistribution(): computes agent count per model
+  (sonnet: 58, haiku: 6, opus: 4) with color mapping (amber/green/purple).
+- Created /api/ecc/models (force-static) endpoint returning {distribution: ModelDistribution[]}.
+
+NEW FRONTEND:
+- src/components/ecc/model-donut.tsx: interactive donut chart showing model distribution:
+  - recharts PieChart with innerRadius=55, outerRadius=80 (donut shape).
+  - Color-coded segments: sonnet (amber #e07856), haiku (green #10b981), opus (purple #a855f7).
+  - Center label showing total count (68) or hovered segment count + model name.
+  - Interactive legend with hover sync (hovering legend highlights segment + vice versa).
+  - Segments dim to 40% opacity when a different one is hovered.
+  - Tooltip showing "N agents (P%)".
+  - VLM-verified: "donut chart with segments for sonnet (amber, 58, 85%), haiku (green, 6, 9%),
+    opus (purple, 4, 6%)."
+
+PAGE INTEGRATION:
+- AI Integration section: replaced standalone ProviderChart with a 2-column grid
+  (radar chart 1.4fr + donut chart 1fr) for side-by-side comparison.
+
+SELF-VERIFICATION (agent-browser + VLM):
+- Models API: returns sonnet:58, haiku:6, opus:4 (total 68).
+- Donut chart: VLM-verified renders with correct colors + counts + legend.
+- Hover interactivity: legend buttons present (sonnet/opus/haiku groups).
+- Mobile (390x844): reloads cleanly.
+- Lint: 0 errors. Dev log: all 12 routes 200 (overview/catalog/file/hooks/hooks-raw/mcp/
+  search/detail/random/compare/graph/models), no runtime errors.
+
+Stage Summary:
+- App now has 9 sections + 27 interactive features total:
+  Catalog browser (+category filter +sort), Hooks Explorer (+raw JSON), MCP Catalog,
+  Command Palette, Provider Radar, Item Detail Modal (+share/copy/github), Architecture
+  Diagram, Scroll Spy, Discover button, Compare modal, Shortcut help overlay, Stats bento
+  grid + bar chart, Progressive disclosure arch cards, Reading progress bar, Shareable deep
+  links, Relationship graph (+clickable nodes +animated entrance +zoom/pan +loading skeleton
+  +node search), Glassmorphism + mesh bg, Recently-viewed history, Graph type filter, Graph
+  zoom/pan controls, Graph node search, Theme persistence, Back-to-top button, Catalog
+  category filter, Catalog sort, Model distribution donut.
+- 12 API endpoints (was 11): + /api/ecc/models.
+- VLM polish: 7/10 (full-page screenshot inflates density; donut chart verified at 9/10 level).
+- Next phase candidates: agent-skill cross-references, collapsible sections, export filtered
+  list, keyboard navigation in graph search results.

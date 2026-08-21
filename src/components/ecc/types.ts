@@ -205,3 +205,10 @@ export interface GraphData {
     tools: number;
   };
 }
+
+/* Model distribution */
+export interface ModelDistribution {
+  model: string;
+  count: number;
+  color: string;
+}

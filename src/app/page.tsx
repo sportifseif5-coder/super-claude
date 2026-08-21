@@ -49,6 +49,7 @@ import { ArchCard } from "@/components/ecc/arch-card";
 import { ReadingProgress } from "@/components/ecc/reading-progress";
 import { RelationshipGraph } from "@/components/ecc/relationship-graph";
 import { BackToTop } from "@/components/ecc/back-to-top";
+import { ModelDonut } from "@/components/ecc/model-donut";
 import type {
   Overview,
   CatalogResponse,
@@ -875,12 +876,11 @@ function AIIntegration({ overview }: { overview: Overview | null }) {
           </div>
         </div>
 
-        {/* Provider comparison radar */}
-        {providers.length > 0 && (
-          <div className="mt-6">
-            <ProviderChart providers={providers} />
-          </div>
-        )}
+        {/* Provider comparison radar + model distribution */}
+        <div className="mt-6 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+          {providers.length > 0 && <ProviderChart providers={providers} />}
+          <ModelDonut />
+        </div>
       </div>
     </section>
   );

@@ -1239,3 +1239,39 @@ export async function getGraphData(): Promise<GraphData> {
   };
   return graphCache;
 }
+
+// ---------------------------------------------------------------------------
+// Model distribution (for donut chart)
+// ---------------------------------------------------------------------------
+
+export interface ModelDistribution {
+  model: string;
+  count: number;
+  color: string;
+}
+
+let modelDistCache: ModelDistribution[] | null = null;
+
+const MODEL_COLORS: Record<string, string> = {
+  sonnet: "#e07856",
+  haiku: "#10b981",
+  opus: "#a855f7",
+};
+
+export async function getModelDistribution(): Promise<ModelDistribution[]> {
+  if (modelDistCache) return modelDistCache;
+  const catalog = await getCatalog();
+  const counts = new Map<string, number>();
+  for (const agent of catalog.agents) {
+    const model = typeof agent.extra["model"] === "string" ? agent.extra["model"] : "sonnet";
+    counts.set(model, (counts.get(model) ?? 0) + 1);
+  }
+  modelDistCache = Array.from(counts.entries())
+    .map(([model, count]) => ({
+      model,
+      count,
+      color: MODEL_COLORS[model] ?? "#6b7280",
+    }))
+    .sort((a, b) => b.count - a.count);
+  return modelDistCache;
+}
