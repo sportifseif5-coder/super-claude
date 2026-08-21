@@ -441,3 +441,69 @@ Stage Summary:
 - Next phase candidates: bento grid for stats, agent-skill cross-references (which skills
   mention which agents), ecc2 harness-eval playground, theme persistence in URL, animated
   graph node entrance, graph node click → open detail modal.
+
+---
+Task ID: 11 (recurring webDevReview round 6)
+Agent: main (Z.ai Code)
+Task: QA + new features (graph node click → modal, recently-viewed history, animated graph entrance) + styling polish.
+
+Work Log:
+- Reviewed worklog (round 5: 17 features, 11 API endpoints, relationship graph + glassmorphism).
+- QA via agent-browser + VLM: app stable, no errors. VLM suggested making graph nodes
+  clickable + improving layout density.
+
+NEW FEATURES:
+1. Graph node click → detail modal:
+   - RelationshipGraph now accepts onAgentClick?: (slug: string) => void prop.
+   - Agent nodes are clickable (cursor-pointer + hover ring indicator); clicking opens the
+     item detail modal for that agent.
+   - Model/tool/category nodes are clickable to toggle a selectedType filter (highlights
+     all nodes of that type with brighter fill + stroke).
+   - Hover detail bar now shows "· click to open" for agents and "· click to highlight type"
+     for models/tools/categories. Clear-filter button appears when a type is selected.
+   - Page wires openAgentBySlug → openItem (which also tracks recently-viewed).
+
+2. Recently-viewed history:
+   - Home tracks recentlyViewed: CatalogItem[] (max 8, most-recent-first, deduped).
+   - openItem() helper centralizes opening + tracking (used by catalog, discover, graph).
+   - New RecentlyViewed component: chip row showing type badge + name, click to reopen.
+   - Appears between Catalog and AI Integration when items have been viewed.
+
+3. Animated graph node entrance:
+   - Graph nodes now use motion.g with staggered fade-in + scale (opacity 0→1, scale 0→1,
+     delay = idx * 0.004 capped at 0.6s). Creates a smooth "building" animation on load.
+
+STYLING POLISH:
+- Agent nodes show a hover ring (outer circle, strokeOpacity 0→0.4 on hover).
+- selectedType nodes get brighter fill (0.9) + stroke (1.5px).
+- Recently-viewed chips have hover border-primary/40 + bg-accent.
+
+PAGE INTEGRATION:
+- Home: added recentlyViewed state, openItem() + openAgentBySlug() helpers.
+- Hero onDiscover, Catalog onSelect, graph onAgentClick all use openItem() (tracks history).
+- RelationshipGraphSection accepts onAgentClick prop.
+- RecentlyViewed component rendered between Catalog and AI Integration.
+
+SELF-VERIFICATION (agent-browser + VLM):
+- Catalog → open deep-dive → modal opens (verified: a11y-architect heading + detail content).
+- Recently viewed: after opening a11y-architect and closing modal, "Recently viewed:" chip
+  row appears with a11y-architect.
+- Deep link persists on mobile reload (#agent/a11y-architect opened modal automatically —
+  dev log shows /api/ecc/detail?path=agents%2Fa11y-architect.md 200).
+- Graph: 189 SVG circles render (nodes + text), animated entrance.
+- Mobile (390x844): reloads cleanly.
+- Lint: 0 errors. Dev log: all 11 routes 200, no runtime errors.
+- VLM final rating: 8/10 — "glassmorphism, animated entrance, interactive graph nodes create
+  a highly polished, modern dashboard feel."
+
+Stage Summary:
+- App now has 9 sections + 19 interactive features total:
+  Catalog browser, Hooks Explorer (+raw JSON), MCP Catalog, Command Palette, Provider Radar,
+  Item Detail Modal (+share/copy/github), Architecture Diagram, Scroll Spy, Discover button,
+  Compare modal, Shortcut help overlay, Stats bar chart, Progressive disclosure arch cards,
+  Reading progress bar, Shareable deep links, Relationship graph (+clickable nodes +animated
+  entrance), Glassmorphism + mesh bg, Recently-viewed history, Graph type filter.
+- 11 API endpoints (unchanged).
+- VLM polish: 8/10 (consistent).
+- Next phase candidates: bento grid for stats, graph zoom/pan, agent-skill cross-references,
+  ecc2 harness-eval playground, theme persistence in URL, loading skeletons for graph.

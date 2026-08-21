@@ -25,6 +25,7 @@ import {
   Search as SearchIcon,
   GitCompare,
   Keyboard as KeyboardIcon,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,7 @@ export default function Home() {
   const [compareA, setCompareA] = React.useState<CatalogItem | null>(null);
   const [compareB, setCompareB] = React.useState<CatalogItem | null>(null);
   const [helpOpen, setHelpOpen] = React.useState(false);
+  const [recentlyViewed, setRecentlyViewed] = React.useState<CatalogItem[]>([]);
 
   React.useEffect(() => {
     Promise.all([
@@ -207,6 +209,22 @@ export default function Home() {
     setCompareOpen(true);
   };
 
+  // Open an item and track it in recently-viewed
+  const openItem = (item: CatalogItem) => {
+    setDetailItem(item);
+    setRecentlyViewed((prev) => {
+      const filtered = prev.filter((it) => it.slug !== item.slug || it.type !== item.type);
+      return [item, ...filtered].slice(0, 8);
+    });
+  };
+
+  // Open an agent by slug (used by the relationship graph)
+  const openAgentBySlug = (slug: string) => {
+    if (!catalog) return;
+    const found = catalog.agents.find((a) => a.slug === slug);
+    if (found) openItem(found);
+  };
+
   // Update URL hash when detail modal opens (shareable deep links)
   React.useEffect(() => {
     if (detailItem) {
@@ -232,17 +250,18 @@ export default function Home() {
         <Hero
           overview={overview}
           onOpenPalette={() => setPaletteOpen(true)}
-          onDiscover={(item) => setDetailItem(item)}
+          onDiscover={(item) => openItem(item)}
         />
         <Stats overview={overview} />
         <Architecture sections={sections} overview={overview} />
-        <RelationshipGraphSection />
+        <RelationshipGraphSection onAgentClick={openAgentBySlug} />
         <Catalog
           catalog={catalog}
           loading={catalogLoading}
-          onSelect={(item) => setDetailItem(item)}
+          onSelect={(item) => openItem(item)}
           onCompare={(item) => openCompare(item)}
         />
+        <RecentlyViewed items={recentlyViewed} onOpen={openItem} />
         <AIIntegration overview={overview} />
         <HooksExplorerSection />
         <HooksMemory overview={overview} sections={sections} />
@@ -810,7 +829,11 @@ function AIIntegration({ overview }: { overview: Overview | null }) {
 /* ------------------------------------------------------------------ */
 /* Relationship Graph                                                  */
 /* ------------------------------------------------------------------ */
-function RelationshipGraphSection() {
+function RelationshipGraphSection({
+  onAgentClick,
+}: {
+  onAgentClick: (slug: string) => void;
+}) {
   return (
     <section
       id="graph"
@@ -820,10 +843,10 @@ function RelationshipGraphSection() {
         <SectionHeading
           eyebrow="Network"
           title="Agent relationship graph"
-          subtitle="A radial visualization of how all 68 agents cluster by category, which models they use (sonnet/haiku/opus), and which tools they're granted. Hover any node to highlight its connections."
+          subtitle="A radial visualization of how all 68 agents cluster by category, which models they use (sonnet/haiku/opus), and which tools they're granted. Hover any node to highlight connections — click an agent to open its detail."
         />
         <div className="mt-8">
-          <RelationshipGraph />
+          <RelationshipGraph onAgentClick={onAgentClick} />
         </div>
       </div>
     </section>
@@ -1067,6 +1090,43 @@ function SectionHeading({
       <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h2>
       <p className="mt-2 text-sm text-muted-foreground sm:text-base">{subtitle}</p>
     </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Recently Viewed                                                     */
+/* ------------------------------------------------------------------ */
+function RecentlyViewed({
+  items,
+  onOpen,
+}: {
+  items: CatalogItem[];
+  onOpen: (item: CatalogItem) => void;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-4">
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-3">
+        <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <Clock className="h-3.5 w-3.5" /> Recently viewed:
+        </span>
+        <div className="flex flex-wrap gap-1.5">
+          {items.map((item, i) => (
+            <button
+              key={`${item.type}-${item.slug}-${i}`}
+              type="button"
+              onClick={() => onOpen(item)}
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-0.5 font-mono text-[0.7rem] transition-colors hover:border-primary/40 hover:bg-accent hover:text-accent-foreground"
+            >
+              <span className="text-[0.55rem] uppercase text-muted-foreground">
+                {item.type.replace(/s$/, "")}
+              </span>
+              {item.name}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 

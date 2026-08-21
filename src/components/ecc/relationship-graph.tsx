@@ -34,10 +34,15 @@ interface PositionedLink {
   key: string;
 }
 
-export function RelationshipGraph() {
+interface RelationshipGraphProps {
+  onAgentClick?: (slug: string) => void;
+}
+
+export function RelationshipGraph({ onAgentClick }: RelationshipGraphProps) {
   const [data, setData] = React.useState<GraphData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [hovered, setHovered] = React.useState<string | null>(null);
+  const [selectedType, setSelectedType] = React.useState<GraphNode["type"] | null>(null);
   const [activeTypes, setActiveTypes] = React.useState<Set<GraphNode["type"]>>(
     new Set(["agent", "model", "category"]),
   );
@@ -219,26 +224,41 @@ export function RelationshipGraph() {
             </g>
             {/* Nodes */}
             <g>
-              {nodes.map((n) => {
+              {nodes.map((n, idx) => {
                 const isHovered = hovered === n.id;
                 const isConnected = connectedIds?.has(n.id);
                 const isDimmed = hovered && !isConnected;
                 const color = TYPE_COLORS[n.type];
+                const isClickable = n.type === "agent" && onAgentClick;
                 return (
-                  <g
+                  <motion.g
                     key={n.id}
                     transform={`translate(${n.x},${n.y})`}
-                    className="cursor-pointer transition-opacity"
+                    className={isClickable ? "cursor-pointer" : "cursor-default"}
                     style={{ opacity: isDimmed ? 0.2 : 1 }}
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ opacity: isDimmed ? 0.2 : 1, scale: 1 }}
+                    transition={{
+                      duration: 0.3,
+                      delay: Math.min(idx * 0.004, 0.6),
+                      ease: "easeOut",
+                    }}
                     onMouseEnter={() => setHovered(n.id)}
                     onMouseLeave={() => setHovered(null)}
+                    onClick={() => {
+                      if (n.type === "agent" && onAgentClick) {
+                        onAgentClick(n.label);
+                      } else if (n.type === "model" || n.type === "tool" || n.type === "category") {
+                        setSelectedType((t) => (t === n.type ? null : n.type));
+                      }
+                    }}
                   >
                     <circle
                       r={isHovered ? n.r + 3 : n.r}
                       fill={color}
-                      fillOpacity={isHovered ? 1 : 0.7}
+                      fillOpacity={isHovered ? 1 : selectedType === n.type ? 0.9 : 0.7}
                       stroke={color}
-                      strokeWidth={isHovered ? 2 : 0}
+                      strokeWidth={isHovered ? 2 : selectedType === n.type ? 1.5 : 0}
                       className="transition-all duration-150"
                     />
                     {(n.type === "model" || n.type === "category" || isHovered) && (
@@ -252,7 +272,17 @@ export function RelationshipGraph() {
                         {n.label}
                       </text>
                     )}
-                  </g>
+                    {isClickable && (
+                      <circle
+                        r={n.r + 6}
+                        fill="none"
+                        stroke={color}
+                        strokeWidth={1}
+                        strokeOpacity={isHovered ? 0.4 : 0}
+                        className="pointer-events-none transition-opacity duration-150"
+                      />
+                    )}
+                  </motion.g>
                 );
               })}
             </g>
@@ -273,9 +303,28 @@ export function RelationshipGraph() {
                 · {connectedIds.size - 1} connection{connectedIds.size - 1 !== 1 ? "s" : ""}
               </span>
             )}
+            {hovered.startsWith("agent:") && onAgentClick && (
+              <span className="ml-2 text-primary">· click to open</span>
+            )}
+            {(hovered.startsWith("model:") || hovered.startsWith("tool:") || hovered.startsWith("cat:")) && (
+              <span className="ml-2 text-primary">· click to highlight type</span>
+            )}
           </span>
         ) : (
-          <span>Hover a node to highlight its connections. Toggle node types above.</span>
+          <span>
+            Hover a node to highlight connections.{" "}
+            {onAgentClick && <span className="text-primary">Click an agent to open its detail.</span>}{" "}
+            Toggle node types above.
+            {selectedType && (
+              <button
+                type="button"
+                onClick={() => setSelectedType(null)}
+                className="ml-2 text-primary underline hover:no-underline"
+              >
+                Clear {selectedType} filter
+              </button>
+            )}
+          </span>
         )}
       </div>
     </div>
