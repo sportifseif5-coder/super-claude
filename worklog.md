@@ -570,3 +570,59 @@ Stage Summary:
 - 11 API endpoints (unchanged).
 - Next phase candidates: agent-skill cross-references, ecc2 harness-eval playground,
   theme persistence in URL, graph node search/highlight, collapsible sections.
+
+---
+Task ID: 13 (recurring webDevReview round 8)
+Agent: main (Z.ai Code)
+Task: QA + new features (graph node search, theme persistence) + styling polish.
+
+Work Log:
+- Reviewed worklog (round 7: 21 features, 11 API endpoints, bento grid + graph zoom/pan).
+- QA via agent-browser + VLM: app stable, no errors. VLM suggested global search with
+  cross-references.
+
+NEW FEATURES:
+1. Graph node search:
+   - Added search input to relationship graph ("Find agent…" with search icon + clear button).
+   - Typing filters agent nodes: matching agents get bright amber stroke (#fbbf24) + larger
+     radius + amber label; non-matching agents dim to 15% opacity.
+   - Detail bar shows "N agents match 'query' · click a highlighted node to open" when searching.
+   - Verified: typing "review" found 23 matching agents (VLM: "highlighted with bright amber
+     ring, non-matches dimmed").
+   - Search is case-insensitive, matches on agent slug/label.
+
+2. Theme persistence:
+   - Added storageKey="ecc-explorer-theme" to next-themes ThemeProvider.
+   - Theme now persists in localStorage across reloads.
+   - Verified: toggled to light, localStorage shows "light", reloaded, theme remained light.
+   - The 't' keyboard shortcut + header toggle button both work with persistence.
+
+STYLING POLISH:
+- Graph search input: glassmorphism (bg-muted/40 → focus:bg-card + border-primary/40).
+- Search-matched nodes: amber stroke (#fbbf24), 2.5px width, fill-opacity 1, amber label.
+- Non-matched agents: opacity 0.15 (dimmed).
+- Detail bar: contextual messages for search/hover/filter states.
+
+SELF-VERIFICATION (agent-browser + VLM):
+- Graph search: typing "review" → "23 agents match 'review'" in detail bar; VLM-verified
+  highlighting ("bright amber ring, non-matches dimmed").
+- Theme persistence: toggled dark→light, localStorage "ecc-explorer-theme" = "light",
+  reloaded, theme remained light (verified classList + localStorage).
+- Clear search button works (X icon).
+- Mobile (390x844): reloads cleanly, theme persists.
+- Lint: 0 errors. Dev log: all 11 routes 200, no runtime errors.
+- VLM full-page rating: 8/10.
+
+Stage Summary:
+- App now has 9 sections + 23 interactive features total:
+  Catalog browser, Hooks Explorer (+raw JSON), MCP Catalog, Command Palette, Provider Radar,
+  Item Detail Modal (+share/copy/github), Architecture Diagram, Scroll Spy, Discover button,
+  Compare modal, Shortcut help overlay, Stats bento grid + bar chart, Progressive disclosure
+  arch cards, Reading progress bar, Shareable deep links, Relationship graph (+clickable nodes
+  +animated entrance +zoom/pan +loading skeleton +node search), Glassmorphism + mesh bg,
+  Recently-viewed history, Graph type filter, Graph zoom/pan controls, Graph node search,
+  Theme persistence.
+- 11 API endpoints (unchanged).
+- VLM polish: 8/10.
+- Next phase candidates: agent-skill cross-references, ecc2 harness-eval playground,
+  collapsible sections, graph edge weight visualization, keyboard navigation in graph search.

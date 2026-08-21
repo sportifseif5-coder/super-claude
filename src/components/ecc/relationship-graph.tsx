@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { Loader2, Network, Filter, PlusCircle, MinusCircle, RotateCcw as ResetIcon } from "lucide-react";
+import { Loader2, Network, Filter, PlusCircle, MinusCircle, RotateCcw as ResetIcon, Search as SearchIcon, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +49,7 @@ export function RelationshipGraph({ onAgentClick }: RelationshipGraphProps) {
   const [zoom, setZoom] = React.useState(1);
   const [pan, setPan] = React.useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = React.useState(false);
+  const [search, setSearch] = React.useState("");
   const dragRef = React.useRef<{ x: number; y: number; px: number; py: number } | null>(null);
 
   const onWheel = React.useCallback((e: WheelEvent) => {
@@ -168,6 +169,19 @@ export function RelationshipGraph({ onAgentClick }: RelationshipGraphProps) {
     return ids;
   }, [hovered, links]);
 
+  // Search matches: agent node IDs whose label contains the query
+  const searchMatches = React.useMemo(() => {
+    if (!search.trim()) return null;
+    const q = search.toLowerCase();
+    const ids = new Set<string>();
+    for (const n of nodes) {
+      if (n.type === "agent" && n.label.toLowerCase().includes(q)) {
+        ids.add(n.id);
+      }
+    }
+    return ids;
+  }, [search, nodes]);
+
   const toggleType = (type: GraphNode["type"]) => {
     setActiveTypes((prev) => {
       const next = new Set(prev);
@@ -189,14 +203,37 @@ export function RelationshipGraph({ onAgentClick }: RelationshipGraphProps) {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1">
-          <Filter className="h-3 w-3 text-muted-foreground" />
-          {(["category", "agent", "model", "tool"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => toggleType(t)}
-              className={cn(
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Node search */}
+          <div className="relative">
+            <SearchIcon className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Find agent…"
+              className="h-7 w-28 rounded-md border border-border bg-muted/40 pl-6 pr-2 text-xs outline-none transition-colors focus:border-primary/40 focus:bg-card sm:w-36"
+              aria-label="Search agents in graph"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            <Filter className="h-3 w-3 text-muted-foreground" />
+            {(["category", "agent", "model", "tool"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => toggleType(t)}
+                className={cn(
                 "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[0.6rem] font-medium transition-colors",
                 activeTypes.has(t)
                   ? "border-border bg-card text-foreground"
@@ -210,6 +247,7 @@ export function RelationshipGraph({ onAgentClick }: RelationshipGraphProps) {
               {TYPE_LABELS[t]}
             </button>
           ))}
+          </div>
         </div>
       </div>
 
@@ -306,7 +344,10 @@ export function RelationshipGraph({ onAgentClick }: RelationshipGraphProps) {
               {nodes.map((n, idx) => {
                 const isHovered = hovered === n.id;
                 const isConnected = connectedIds?.has(n.id);
-                const isDimmed = hovered && !isConnected;
+                const isSearchMatch = searchMatches?.has(n.id);
+                const isSearchDimmed = searchMatches && n.type === "agent" && !isSearchMatch;
+                const isDimmed = (hovered && !isConnected) || isSearchDimmed;
+                const isSearchHighlight = isSearchMatch && n.type === "agent";
                 const color = TYPE_COLORS[n.type];
                 const isClickable = n.type === "agent" && onAgentClick;
                 return (
@@ -314,9 +355,9 @@ export function RelationshipGraph({ onAgentClick }: RelationshipGraphProps) {
                     key={n.id}
                     transform={`translate(${n.x},${n.y})`}
                     className={isClickable ? "cursor-pointer" : "cursor-default"}
-                    style={{ opacity: isDimmed ? 0.2 : 1 }}
+                    style={{ opacity: isDimmed ? 0.15 : 1 }}
                     initial={{ opacity: 0, scale: 0 }}
-                    animate={{ opacity: isDimmed ? 0.2 : 1, scale: 1 }}
+                    animate={{ opacity: isDimmed ? 0.15 : 1, scale: 1 }}
                     transition={{
                       duration: 0.3,
                       delay: Math.min(idx * 0.004, 0.6),
@@ -333,20 +374,20 @@ export function RelationshipGraph({ onAgentClick }: RelationshipGraphProps) {
                     }}
                   >
                     <circle
-                      r={isHovered ? n.r + 3 : n.r}
+                      r={isHovered || isSearchHighlight ? n.r + 3 : n.r}
                       fill={color}
-                      fillOpacity={isHovered ? 1 : selectedType === n.type ? 0.9 : 0.7}
-                      stroke={color}
-                      strokeWidth={isHovered ? 2 : selectedType === n.type ? 1.5 : 0}
+                      fillOpacity={isHovered || isSearchHighlight ? 1 : selectedType === n.type ? 0.9 : 0.7}
+                      stroke={isSearchHighlight ? "#fbbf24" : color}
+                      strokeWidth={isHovered ? 2 : isSearchHighlight ? 2.5 : selectedType === n.type ? 1.5 : 0}
                       className="transition-all duration-150"
                     />
-                    {(n.type === "model" || n.type === "category" || isHovered) && (
+                    {(n.type === "model" || n.type === "category" || isHovered || isSearchHighlight) && (
                       <text
                         x={0}
                         y={n.r + 12}
                         textAnchor="middle"
-                        className="pointer-events-none fill-foreground font-mono"
-                        style={{ fontSize: n.type === "model" ? 11 : 9, fontWeight: n.type === "model" ? 600 : 400 }}
+                        className={cn("pointer-events-none fill-foreground font-mono", isSearchHighlight && "fill-amber-400")}
+                        style={{ fontSize: n.type === "model" ? 11 : 9, fontWeight: n.type === "model" || isSearchHighlight ? 600 : 400 }}
                       >
                         {n.label}
                       </text>
@@ -394,17 +435,28 @@ export function RelationshipGraph({ onAgentClick }: RelationshipGraphProps) {
           </span>
         ) : (
           <span>
-            Hover a node to highlight connections.{" "}
-            {onAgentClick && <span className="text-primary">Click an agent to open its detail.</span>}{" "}
-            Toggle node types above.
-            {selectedType && (
-              <button
-                type="button"
-                onClick={() => setSelectedType(null)}
-                className="ml-2 text-primary underline hover:no-underline"
-              >
-                Clear {selectedType} filter
-              </button>
+            {searchMatches ? (
+              <span>
+                <span className="text-primary font-medium">{searchMatches.size}</span> agent{searchMatches.size !== 1 ? "s" : ""} match “{search}”
+                {searchMatches.size > 0 && onAgentClick && (
+                  <span className="ml-2 text-primary">· click a highlighted node to open</span>
+                )}
+              </span>
+            ) : (
+              <>
+                Hover a node to highlight connections.{" "}
+                {onAgentClick && <span className="text-primary">Click an agent to open its detail.</span>}{" "}
+                Toggle node types above.
+                {selectedType && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedType(null)}
+                    className="ml-2 text-primary underline hover:no-underline"
+                  >
+                    Clear {selectedType} filter
+                  </button>
+                )}
+              </>
             )}
           </span>
         )}
