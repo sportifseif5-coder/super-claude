@@ -72,3 +72,75 @@ Stage Summary:
 - Single user-visible route: / (Next.js 16, App Router, Turbopack, port 3000).
 - Next phase: recurring webDevReview every 15 min can extend with more detail (e.g.
   per-skill deep dive, hooks.json interactive viewer, ecc2 harness-eval playground).
+
+---
+Task ID: 6 (recurring webDevReview round 1)
+Agent: main (Z.ai Code)
+Task: QA pass + bug fixes + new features (Hooks Explorer, MCP Catalog, Command Palette, Provider Chart) + styling polish.
+
+Work Log:
+- Reviewed worklog (previous state: stable app, all routes 200, browser-verified).
+- QA via agent-browser: opened page, no console errors. Used VLM (z-ai vision) to assess
+  screenshots — identified: (a) low contrast on muted-foreground text in dark mode,
+  (b) excessive whitespace in hero, (c) next.config allowedDevOrigins warning.
+- Fixed next.config.ts: added allowedDevOrigins for *.space-z.ai, *.chatglm.cn, *.z.ai
+  to silence the cross-origin dev warning.
+- Fixed dark-mode contrast in globals.css: bumped muted-foreground from oklch(0.7) →
+  oklch(0.78), card from 0.21 → 0.215, border opacity 10% → 12%, accent 0.3 → 0.32.
+- Added CSS polish utilities: .ecc-section-accent (gradient hairline), .ecc-lift
+  (card hover translateY), .ecc-gradient-text, .ecc-focus, prefers-reduced-motion.
+- Tightened hero vertical padding (py-16/sm:py-24 → py-14/sm:py-20).
+
+NEW BACKEND (scanner + APIs):
+- Extended src/lib/ecc-scanner.ts with 3 new parsers:
+  - getHooks(): parses hooks/hooks.json into structured HookEntry[] (id, event, matcher,
+    description, script path extracted from the inlined node -e command, flags, async,
+    timeout, blocking heuristic). 23 hooks across 7 events.
+  - getMcp(): parses mcp-configs/mcp-servers.json into McpServer[] (name, command, args,
+    description, hasEnv, transport). 35 servers.
+  - getSearchIndex(): builds 387 SearchEntry[] (agents, skills, commands, files, sections)
+    for the command palette.
+- Created 3 new API routes (all force-static, cached):
+  /api/ecc/hooks, /api/ecc/mcp, /api/ecc/search.
+
+NEW FRONTEND (4 new components + 2 new page sections):
+- src/components/ecc/hooks-explorer.tsx: interactive Hooks Explorer — event filter chips
+  (All/SessionStart/PreToolUse/Stop/...), phase filter (lifecycle/preflight/postflight),
+  search, animated hook cards (phase-colored badges, blocking shield icon, async/timeout
+  indicators), click-to-open detail dialog with extracted script path + convention note.
+- src/components/ecc/mcp-catalog.tsx: searchable grid of 35 MCP servers with transport
+  icon (stdio/http), env badge, arg count.
+- src/components/ecc/command-palette.tsx: Cmd+K / Ctrl+K command palette — fuzzy search
+  across 387 entries (agents/skills/commands/files/sections), keyboard nav (↑↓ enter esc),
+  scroll-into-view on select, footer with shortcuts.
+- src/components/ecc/provider-chart.tsx: recharts RadarChart comparing providers across
+  5 normalized axes (Tools, Vision, Context, Output, Models) with toggleable legend.
+- Added HooksExplorerSection + McpCatalogSection to page.tsx; integrated ProviderChart
+  into AIIntegration section.
+- Added Cmd+K handler in Home; Search button in Header + Hero opens palette.
+
+SELF-VERIFICATION (agent-browser + VLM):
+- Command palette: opens via header button / Cmd+K / hero button; typing "react" filters
+  to react-related entries; Esc closes.
+- Hooks Explorer: 23 hook cards render; event filter chips show counts (PreToolUse 8,
+  Stop 7, SessionStart 2...); clicking a hook opens detail dialog with script path +
+  convention note; Esc closes.
+- MCP catalog: 35 servers render with search "Search 35 MCP servers…".
+- Radar chart (VLM-verified): renders correctly with colored translucent polygons, 5 axis
+  labels (Tools/Vision/Context/Output/Models), color-coded legend, no rendering bugs.
+- Hero (VLM-verified post-fix): step chips have "excellent readability", spacing
+  "well-balanced", "no visible rendering bugs detected".
+- Mobile (390x844): reloads cleanly, hero reflows.
+- Lint: 0 errors. Dev log: all routes 200, no runtime errors, no hydration crashes.
+
+Stage Summary:
+- App now has 8 sections (was 6): Hero, Stats, Architecture, Catalog, AI Integration
+  (+radar), Hooks Explorer (new), Hooks & Memory, MCP Catalog (new), Source Code.
+- 4 new interactive features: Hooks Explorer, MCP Catalog, Command Palette (Cmd+K),
+  Provider Comparison Radar.
+- 3 new API endpoints: /api/ecc/hooks, /api/ecc/mcp, /api/ecc/search.
+- Contrast + spacing issues from VLM QA round 1 are resolved.
+- Next phase candidates: per-skill deep-dive modal with "When to Use" extraction,
+  hooks.json raw viewer with JSON path highlighting, ecc2 harness-eval playground
+  simulator, keyboard shortcut help overlay (?), shareable deep links to specific
+  agents/skills.

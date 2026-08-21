@@ -21,6 +21,8 @@ import {
   AlertTriangle,
   Lock,
   Zap,
+  Command as CommandIcon,
+  Search as SearchIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -30,6 +32,10 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { CatalogBrowser } from "@/components/ecc/catalog-browser";
 import { SourceBrowser } from "@/components/ecc/source-browser";
 import { CodeBlock } from "@/components/ecc/code-block";
+import { HooksExplorer } from "@/components/ecc/hooks-explorer";
+import { McpCatalog } from "@/components/ecc/mcp-catalog";
+import { CommandPalette } from "@/components/ecc/command-palette";
+import { ProviderChart } from "@/components/ecc/provider-chart";
 import type {
   Overview,
   CatalogResponse,
@@ -44,6 +50,7 @@ export default function Home() {
   const [notableFiles, setNotableFiles] = React.useState<NotableFile[]>([]);
   const [catalogLoading, setCatalogLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [paletteOpen, setPaletteOpen] = React.useState(false);
 
   React.useEffect(() => {
     Promise.all([
@@ -62,16 +69,30 @@ export default function Home() {
       .catch((e) => setError(e.message));
   }, []);
 
+  // Cmd+K / Ctrl+K to toggle command palette
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <Header overview={overview} />
+      <Header overview={overview} onOpenPalette={() => setPaletteOpen(true)} />
       <main className="flex-1">
-        <Hero overview={overview} />
+        <Hero overview={overview} onOpenPalette={() => setPaletteOpen(true)} />
         <Stats overview={overview} />
         <Architecture sections={sections} overview={overview} />
         <Catalog catalog={catalog} loading={catalogLoading} />
         <AIIntegration overview={overview} />
+        <HooksExplorerSection />
         <HooksMemory overview={overview} sections={sections} />
+        <McpCatalogSection />
         <SourceCode notableFiles={notableFiles} />
         {error && (
           <section className="border-t border-border py-8">
@@ -82,6 +103,7 @@ export default function Home() {
         )}
       </main>
       <Footer overview={overview} />
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </div>
   );
 }
@@ -89,7 +111,7 @@ export default function Home() {
 /* ------------------------------------------------------------------ */
 /* Header                                                              */
 /* ------------------------------------------------------------------ */
-function Header({ overview }: { overview: Overview | null }) {
+function Header({ overview, onOpenPalette }: { overview: Overview | null; onOpenPalette: () => void }) {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
@@ -104,12 +126,13 @@ function Header({ overview }: { overview: Overview | null }) {
             </span>
           </div>
         </a>
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav className="hidden items-center gap-1 lg:flex">
           {[
             ["Architecture", "#architecture"],
             ["Catalog", "#catalog"],
             ["AI Layer", "#ai"],
-            ["Hooks & Memory", "#hooks"],
+            ["Hooks", "#hooks-explorer"],
+            ["MCP", "#mcp"],
             ["Source", "#source"],
           ].map(([label, href]) => (
             <a
@@ -122,6 +145,18 @@ function Header({ overview }: { overview: Overview | null }) {
           ))}
         </nav>
         <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={onOpenPalette}
+            className="hidden items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground sm:inline-flex"
+            aria-label="Open command palette"
+          >
+            <SearchIcon className="h-3.5 w-3.5" />
+            <span className="hidden md:inline">Search…</span>
+            <kbd className="inline-flex items-center gap-0.5 rounded border border-border bg-muted px-1 py-0.5 font-mono text-[0.6rem]">
+              <CommandIcon className="h-2.5 w-2.5" />K
+            </kbd>
+          </button>
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
             <a
               href="https://github.com/affaan-m/ecc"
@@ -141,7 +176,7 @@ function Header({ overview }: { overview: Overview | null }) {
 /* ------------------------------------------------------------------ */
 /* Hero                                                                */
 /* ------------------------------------------------------------------ */
-function Hero({ overview }: { overview: Overview | null }) {
+function Hero({ overview, onOpenPalette }: { overview: Overview | null; onOpenPalette: () => void }) {
   return (
     <section id="top" className="relative overflow-hidden border-b border-border">
       <div className="ecc-hero-grid absolute inset-0 -z-10" />
@@ -153,7 +188,7 @@ function Hero({ overview }: { overview: Overview | null }) {
             "radial-gradient(ellipse 60% 50% at 50% 0%, color-mix(in oklch, var(--primary) 18%, transparent), transparent 70%)",
         }}
       />
-      <div className="mx-auto max-w-6xl px-4 py-16 sm:py-24">
+      <div className="mx-auto max-w-6xl px-4 py-14 sm:py-20">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -205,6 +240,12 @@ function Hero({ overview }: { overview: Overview | null }) {
               <a href="#catalog">
                 Browse {overview ? overview.counts.agents + overview.counts.skills : "the"} assets
               </a>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onOpenPalette} className="hidden sm:inline-flex">
+              <SearchIcon className="mr-1.5 h-4 w-4" /> Search
+              <kbd className="ml-2 inline-flex items-center gap-0.5 rounded border border-border bg-muted px-1 py-0.5 font-mono text-[0.6rem]">
+                <CommandIcon className="h-2.5 w-2.5" />K
+              </kbd>
             </Button>
           </div>
         </motion.div>
@@ -568,14 +609,63 @@ function AIIntegration({ overview }: { overview: Overview | null }) {
             </Card>
           </div>
         </div>
+
+        {/* Provider comparison radar */}
+        {providers.length > 0 && (
+          <div className="mt-6">
+            <ProviderChart providers={providers} />
+          </div>
+        )}
       </div>
     </section>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* Hooks & Memory                                                      */
+/* Hooks Explorer (interactive)                                        */
 /* ------------------------------------------------------------------ */
+function HooksExplorerSection() {
+  return (
+    <section
+      id="hooks-explorer"
+      className="ecc-section-accent scroll-mt-16 border-b border-border py-16 sm:py-20"
+    >
+      <div className="mx-auto max-w-6xl px-4">
+        <SectionHeading
+          eyebrow="Interactive"
+          title="Hooks Explorer"
+          subtitle="Every hook registered in hooks/hooks.json, parsed into structured cards. Filter by event or phase, search by id/matcher/script, and click any hook for full detail including the extracted script path and flags."
+        />
+        <div className="mt-8">
+          <HooksExplorer />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* MCP Catalog                                                         */
+/* ------------------------------------------------------------------ */
+function McpCatalogSection() {
+  return (
+    <section
+      id="mcp"
+      className="ecc-section-accent scroll-mt-16 border-b border-border py-16 sm:py-20"
+    >
+      <div className="mx-auto max-w-6xl px-4">
+        <SectionHeading
+          eyebrow="Integrations"
+          title="MCP server catalog"
+          subtitle="The reference catalog of Model Context Protocol servers from mcp-configs/mcp-servers.json. 35 servers spanning databases, deployment platforms, memory, search, and browser automation."
+        />
+        <div className="mt-8">
+          <McpCatalog />
+        </div>
+      </div>
+    </section>
+  );
+}
 function HooksMemory({
   overview,
   sections,

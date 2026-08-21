@@ -93,3 +93,47 @@ export interface FileIndexResponse {
   sections: ArchitectureSection[];
   notableFiles: NotableFile[];
 }
+
+/* Hooks */
+export interface HookEntry {
+  id: string;
+  event: string;
+  matcher: string;
+  description: string;
+  script: string;
+  flags: string[];
+  async: boolean;
+  timeout: number | null;
+  blocking: boolean;
+}
+
+export interface HooksData {
+  totalHooks: number;
+  events: { event: string; count: number; description: string; phase: string }[];
+  hooks: HookEntry[];
+  matchers: { matcher: string; count: number }[];
+}
+
+/* MCP */
+export interface McpServer {
+  name: string;
+  command: string;
+  args: string[];
+  description: string;
+  hasEnv: boolean;
+  transport: "stdio" | "http" | "unknown";
+}
+
+export interface McpData {
+  total: number;
+  servers: McpServer[];
+}
+
+/* Search */
+export interface SearchEntry {
+  id: string;
+  label: string;
+  hint: string;
+  type: "agent" | "skill" | "command" | "rule" | "file" | "section";
+  target: string;
+}

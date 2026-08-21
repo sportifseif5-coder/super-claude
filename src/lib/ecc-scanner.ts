@@ -662,3 +662,249 @@ export const NOTABLE_FILES: { path: string; label: string; group: string; descri
   { path: "ecc2/src/harness_eval.rs", label: "ecc2 Harness Eval", group: "ecc2", description: "Bounded deterministic config evaluation gate" },
   { path: "scripts/ecc.js", label: "ecc CLI", group: "Scripts", description: "Unified Node CLI dispatcher" },
 ];
+
+// ---------------------------------------------------------------------------
+// Hooks (structured parse of hooks/hooks.json)
+// ---------------------------------------------------------------------------
+
+export interface HookEntry {
+  id: string;
+  event: string;
+  matcher: string;
+  description: string;
+  script: string; // extracted script path, e.g. scripts/hooks/pre-bash-dispatcher.js
+  flags: string[]; // e.g. ["standard", "strict"]
+  async: boolean;
+  timeout: number | null;
+  blocking: boolean;
+}
+
+export interface HooksData {
+  totalHooks: number;
+  events: { event: string; count: number; description: string; phase: string }[];
+  hooks: HookEntry[];
+  matchers: { matcher: string; count: number }[];
+}
+
+const EVENT_META: Record<string, { phase: string; description: string }> = {
+  SessionStart: { phase: "lifecycle", description: "Fires when a session begins — load prior context, detect project state." },
+  PreToolUse: { phase: "preflight", description: "Before a tool executes — validation, gating, reminders." },
+  PostToolUse: { phase: "postflight", description: "After a tool finishes — formatting, feedback loops, observations." },
+  PostToolUseFailure: { phase: "postflight", description: "After a tool fails — error capture, retry hints." },
+  PreCompact: { phase: "lifecycle", description: "Before context compaction — save state." },
+  Stop: { phase: "lifecycle", description: "When the agent finishes — batch quality gates." },
+  SessionEnd: { phase: "lifecycle", description: "When a session ends — persist summaries." },
+};
+
+function extractScriptFromCommand(command: string): { script: string; flags: string[] } {
+  // Commands look like: node -e "..." node scripts/hooks/run-with-flags.js <flag> <script.js> ...
+  // or: node -e "..." node scripts/hooks/pre-bash-dispatcher.js
+  // Try to find the actual .js script and any flags passed to run-with-flags.
+  const flags: string[] = [];
+  const runWithFlagsMatch = command.match(/run-with-flags\.js\s+([\w:-]+)\s+(scripts\/hooks\/[\w-]+\.js)(?:\s+([\w,-]+))?/);
+  if (runWithFlagsMatch) {
+    const flag = runWithFlagsMatch[1];
+    const script = runWithFlagsMatch[2];
+    const moreFlags = runWithFlagsMatch[3];
+    if (flag) flags.push(flag);
+    if (moreFlags) flags.push(...moreFlags.split(",").filter(Boolean));
+    return { script, flags };
+  }
+  // Direct script invocation
+  const directMatch = command.match(/(scripts\/hooks\/[\w-]+\.js)/);
+  if (directMatch) {
+    return { script: directMatch[1], flags };
+  }
+  return { script: "", flags };
+}
+
+let hooksCache: HooksData | null = null;
+
+export async function getHooks(): Promise<HooksData> {
+  if (hooksCache) return hooksCache;
+  const raw = await readText("hooks/hooks.json").catch(() => '{"hooks":{}}');
+  let parsed: { hooks: Record<string, unknown[]> };
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    parsed = { hooks: {} };
+  }
+  const hooksByEvent = parsed.hooks ?? {};
+  const hooks: HookEntry[] = [];
+  const events: HooksData["events"] = [];
+  const matcherCounts: Record<string, number> = {};
+
+  for (const event of Object.keys(hooksByEvent)) {
+    const entries = hooksByEvent[event] as Array<Record<string, unknown>>;
+    events.push({
+      event,
+      count: entries.length,
+      description: EVENT_META[event]?.description ?? "",
+      phase: EVENT_META[event]?.phase ?? "other",
+    });
+    for (const entry of entries) {
+      const matcher = String(entry.matcher ?? "*");
+      const id = String(entry.id ?? `${event}:${matcher}`);
+      const description = String(entry.description ?? "");
+      const hookArr = entry.hooks as Array<Record<string, unknown>> | undefined;
+      const firstHook = hookArr?.[0] ?? {};
+      const command = String(firstHook.command ?? "");
+      const { script, flags } = extractScriptFromCommand(command);
+      const asyncFlag = Boolean(firstHook.async);
+      const timeout = typeof firstHook.timeout === "number" ? firstHook.timeout : null;
+      // Heuristic: Stop + PreToolUse hooks with config-protection/gateguard/mcp-health are blocking
+      const blockingIds = ["config-protection", "gateguard", "mcp-health", "format-typecheck", "check-console", "pre-bash"];
+      const blocking = blockingIds.some((b) => id.includes(b)) || event === "Stop";
+
+      hooks.push({
+        id,
+        event,
+        matcher,
+        description,
+        script,
+        flags,
+        async: asyncFlag,
+        timeout,
+        blocking,
+      });
+      matcherCounts[matcher] = (matcherCounts[matcher] ?? 0) + 1;
+    }
+  }
+
+  const matchers = Object.entries(matcherCounts)
+    .map(([matcher, count]) => ({ matcher, count }))
+    .sort((a, b) => b.count - a.count);
+
+  hooksCache = {
+    totalHooks: hooks.length,
+    events: events.sort((a, b) => a.event.localeCompare(b.event)),
+    hooks: hooks.sort((a, b) => a.event.localeCompare(b.event) || a.id.localeCompare(b.id)),
+    matchers,
+  };
+  return hooksCache;
+}
+
+// ---------------------------------------------------------------------------
+// MCP catalog (structured parse of mcp-configs/mcp-servers.json)
+// ---------------------------------------------------------------------------
+
+export interface McpServer {
+  name: string;
+  command: string;
+  args: string[];
+  description: string;
+  hasEnv: boolean;
+  transport: "stdio" | "http" | "unknown";
+}
+
+export interface McpData {
+  total: number;
+  servers: McpServer[];
+}
+
+let mcpCache: McpData | null = null;
+
+export async function getMcp(): Promise<McpData> {
+  if (mcpCache) return mcpCache;
+  const raw = await readText("mcp-configs/mcp-servers.json").catch(() => '{"mcpServers":{}}');
+  let parsed: { mcpServers: Record<string, Record<string, unknown>> };
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    parsed = { mcpServers: {} };
+  }
+  const servers: McpServer[] = [];
+  for (const [name, cfg] of Object.entries(parsed.mcpServers ?? {})) {
+    const c = cfg as Record<string, unknown>;
+    servers.push({
+      name,
+      command: String(c.command ?? ""),
+      args: Array.isArray(c.args) ? (c.args as string[]) : [],
+      description: String(c.description ?? ""),
+      hasEnv: Boolean(c.env && Object.keys(c.env as object).length > 0),
+      transport: c.type === "http" ? "http" : c.command ? "stdio" : "unknown",
+    });
+  }
+  mcpCache = {
+    total: servers.length,
+    servers: servers.sort((a, b) => a.name.localeCompare(b.name)),
+  };
+  return mcpCache;
+}
+
+// ---------------------------------------------------------------------------
+// Searchable command index (for the command palette)
+// ---------------------------------------------------------------------------
+
+export interface SearchEntry {
+  id: string;
+  label: string;
+  hint: string;
+  type: "agent" | "skill" | "command" | "rule" | "file" | "section";
+  target: string; // href or action
+}
+
+let searchCache: SearchEntry[] | null = null;
+
+export async function getSearchIndex(): Promise<SearchEntry[]> {
+  if (searchCache) return searchCache;
+  const [catalog, notableFiles] = await Promise.all([getCatalog(), Promise.resolve(NOTABLE_FILES)]);
+  const entries: SearchEntry[] = [];
+
+  for (const a of catalog.agents.slice(0, 200)) {
+    entries.push({
+      id: `agent-${a.slug}`,
+      label: a.name,
+      hint: a.description.slice(0, 80) || "agent",
+      type: "agent",
+      target: `#catalog`,
+    });
+  }
+  for (const s of catalog.skills.slice(0, 200)) {
+    entries.push({
+      id: `skill-${s.slug}`,
+      label: s.name,
+      hint: s.description.slice(0, 80) || "skill",
+      type: "skill",
+      target: `#catalog`,
+    });
+  }
+  for (const c of catalog.commands.slice(0, 100)) {
+    entries.push({
+      id: `cmd-${c.slug}`,
+      label: `/${c.slug}`,
+      hint: c.description.slice(0, 80) || "command",
+      type: "command",
+      target: `#catalog`,
+    });
+  }
+  for (const f of notableFiles) {
+    entries.push({
+      id: `file-${f.path}`,
+      label: f.label,
+      hint: f.description,
+      type: "file",
+      target: `#source`,
+    });
+  }
+  for (const sec of [
+    ["architecture", "Architecture"],
+    ["catalog", "Catalog"],
+    ["ai", "AI Integration"],
+    ["hooks", "Hooks & Memory"],
+    ["source", "Source Code"],
+    ["hooks-explorer", "Hooks Explorer"],
+    ["mcp", "MCP Catalog"],
+  ]) {
+    entries.push({
+      id: `section-${sec[0]}`,
+      label: sec[1],
+      hint: "Jump to section",
+      type: "section",
+      target: `#${sec[0]}`,
+    });
+  }
+
+  searchCache = entries;
+  return entries;
+}
