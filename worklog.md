@@ -626,3 +626,66 @@ Stage Summary:
 - VLM polish: 8/10.
 - Next phase candidates: agent-skill cross-references, ecc2 harness-eval playground,
   collapsible sections, graph edge weight visualization, keyboard navigation in graph search.
+
+---
+Task ID: 14 (recurring webDevReview round 9)
+Agent: main (Z.ai Code)
+Task: QA + new features (back-to-top, catalog category filter + sort) + styling polish.
+
+Work Log:
+- Reviewed worklog (round 8: 23 features, graph node search + theme persistence).
+- QA via agent-browser + VLM: app stable, no errors. VLM suggested navigation improvements.
+
+NEW FEATURES:
+1. Back-to-top floating button (src/components/ecc/back-to-top.tsx):
+   - Fixed bottom-right floating button with ArrowUp icon.
+   - Appears after scrolling 800px (framer-motion fade+scale entrance).
+   - Smooth scroll-to-top on click (behavior: smooth).
+   - Glassmorphism styling (bg-card/80 backdrop-blur + hover border-primary/40).
+   - Verified: scrolled to 2000px, button appeared, clicked, scrollY → 0.
+
+2. Catalog category filter pills (agents tab):
+   - Computes categories by filename prefix (rust, go, code, react, etc.).
+   - Shows up to 12 category pills with count badges (e.g. "rust 2", "go 3").
+   - "All" pill clears the filter; clicking a pill toggles it.
+   - Active pill highlighted with bg-primary text-primary-foreground.
+   - Verified: clicking "rust" filtered to rust-build-resolver + rust-reviewer only.
+
+3. Catalog sort dropdown:
+   - Sort by: Name (default, alphabetical), Model (by model field), Tools (by tool count desc).
+   - Native <select> element with aria-label.
+   - Works alongside category filter + text search.
+
+STYLING POLISH:
+- Category pills: rounded-full, text-[0.65rem], count badge with opacity-60.
+- Sort dropdown: h-6, text-[0.65rem], border-border bg-card.
+- Back-to-top: whileHover scale 1.1, whileTap scale 0.95, shadow-lg.
+
+PAGE INTEGRATION:
+- Added <BackToTop /> at the end of the Home component.
+- CatalogBrowser: added sortBy + activeCategory state, categories useMemo, updated
+  filtered useMemo with category filter + sort logic, added category pill row + sort select.
+
+SELF-VERIFICATION (agent-browser + VLM):
+- Back-to-top: appears after scroll, click scrolls to top (scrollY 2000→0 verified).
+- Category filter: clicking "rust" → only rust-build-resolver + rust-reviewer shown.
+- Sort dropdown: changing to "tools" applies sort (select value changes).
+- Mobile (390x844): reloads cleanly.
+- Lint: 0 errors. Dev log: all 11 routes 200, no runtime errors.
+- VLM full-page rating: 9/10 — "The single best feature is the interactive relationship
+  graph that visualizes the complex connections between agents, skills, and commands."
+
+Stage Summary:
+- App now has 9 sections + 26 interactive features total:
+  Catalog browser (+category filter +sort), Hooks Explorer (+raw JSON), MCP Catalog,
+  Command Palette, Provider Radar, Item Detail Modal (+share/copy/github), Architecture
+  Diagram, Scroll Spy, Discover button, Compare modal, Shortcut help overlay, Stats bento
+  grid + bar chart, Progressive disclosure arch cards, Reading progress bar, Shareable deep
+  links, Relationship graph (+clickable nodes +animated entrance +zoom/pan +loading skeleton
+  +node search), Glassmorphism + mesh bg, Recently-viewed history, Graph type filter, Graph
+  zoom/pan controls, Graph node search, Theme persistence, Back-to-top button, Catalog
+  category filter, Catalog sort.
+- 11 API endpoints (unchanged).
+- VLM polish: 9/10 (improved from 8/10).
+- Next phase candidates: agent-skill cross-references, ecc2 harness-eval playground,
+  collapsible sections, keyboard navigation in graph search results, export filtered list.

@@ -38,17 +38,61 @@ export function CatalogBrowser({ catalog, loading, onSelect, onCompare }: Catalo
   const [activeTab, setActiveTab] = React.useState<CatalogType>("agents");
   const [query, setQuery] = React.useState("");
   const [selected, setSelected] = React.useState<CatalogItem | null>(null);
+  const [sortBy, setSortBy] = React.useState<"name" | "model" | "tools">("name");
+  const [activeCategory, setActiveCategory] = React.useState<string | null>(null);
 
   const items = catalog ? catalog[activeTab] : [];
+
+  // Compute categories (by filename prefix) for the active tab
+  const categories = React.useMemo(() => {
+    if (activeTab !== "agents") return [];
+    const counts = new Map<string, number>();
+    for (const it of items) {
+      const cat = it.slug.includes("-") ? it.slug.split("-")[0] : "other";
+      counts.set(cat, (counts.get(cat) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12);
+  }, [items, activeTab]);
+
   const filtered = React.useMemo(() => {
-    if (!query.trim()) return items;
-    const q = query.toLowerCase();
-    return items.filter(
-      (it) =>
-        it.name.toLowerCase().includes(q) ||
-        it.description.toLowerCase().includes(q),
-    );
-  }, [items, query]);
+    let result = items;
+    // Category filter
+    if (activeCategory) {
+      result = result.filter((it) => {
+        const cat = it.slug.includes("-") ? it.slug.split("-")[0] : "other";
+        return cat === activeCategory;
+      });
+    }
+    // Text search
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      result = result.filter(
+        (it) =>
+          it.name.toLowerCase().includes(q) ||
+          it.description.toLowerCase().includes(q),
+      );
+    }
+    // Sort
+    const sorted = [...result];
+    if (sortBy === "name") {
+      sorted.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortBy === "model") {
+      sorted.sort((a, b) => {
+        const ma = typeof a.extra["model"] === "string" ? a.extra["model"] : "zzz";
+        const mb = typeof b.extra["model"] === "string" ? b.extra["model"] : "zzz";
+        return String(ma).localeCompare(String(mb));
+      });
+    } else if (sortBy === "tools") {
+      sorted.sort((a, b) => {
+        const ta = typeof a.extra["tools"] === "string" ? a.extra["tools"].split(",").length : 0;
+        const tb = typeof b.extra["tools"] === "string" ? b.extra["tools"].split(",").length : 0;
+        return Number(tb) - Number(ta);
+      });
+    }
+    return sorted;
+  }, [items, query, activeCategory, sortBy]);
 
   const handleSelect = (item: CatalogItem) => {
     setSelected(item);
@@ -117,6 +161,52 @@ export function CatalogBrowser({ catalog, loading, onSelect, onCompare }: Catalo
             )}
           </div>
         </div>
+        {/* Category filter + sort (agents only) */}
+        {categories.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1 border-b border-border p-2">
+            <button
+              type="button"
+              onClick={() => setActiveCategory(null)}
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[0.65rem] font-medium transition-colors",
+                !activeCategory
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
+              )}
+            >
+              All
+            </button>
+            {categories.map(([cat, count]) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setActiveCategory(activeCategory === cat ? null : cat)}
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[0.65rem] font-medium transition-colors",
+                  activeCategory === cat
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
+                )}
+              >
+                {cat}
+                <span className="ml-1 opacity-60">{count}</span>
+              </button>
+            ))}
+            <div className="ml-auto flex items-center gap-1">
+              <span className="text-[0.6rem] text-muted-foreground">sort:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as "name" | "model" | "tools")}
+                className="h-6 rounded border border-border bg-card px-1 text-[0.65rem] outline-none"
+                aria-label="Sort by"
+              >
+                <option value="name">Name</option>
+                <option value="model">Model</option>
+                <option value="tools">Tools</option>
+              </select>
+            </div>
+          </div>
+        )}
         <div className="ecc-scroll max-h-[28rem] overflow-y-auto p-1.5">
           {loading ? (
             <div className="flex items-center justify-center py-12 text-muted-foreground">

@@ -48,6 +48,7 @@ import { StatsChart } from "@/components/ecc/stats-chart";
 import { ArchCard } from "@/components/ecc/arch-card";
 import { ReadingProgress } from "@/components/ecc/reading-progress";
 import { RelationshipGraph } from "@/components/ecc/relationship-graph";
+import { BackToTop } from "@/components/ecc/back-to-top";
 import type {
   Overview,
   CatalogResponse,
@@ -286,6 +287,7 @@ export default function Home() {
         initialB={compareB}
       />
       <ShortcutHelp open={helpOpen} onOpenChange={setHelpOpen} />
+      <BackToTop />
     </div>
   );
 }
