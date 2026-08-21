@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { Loader2, Network, Filter } from "lucide-react";
+import { Loader2, Network, Filter, PlusCircle, MinusCircle, RotateCcw as ResetIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +46,31 @@ export function RelationshipGraph({ onAgentClick }: RelationshipGraphProps) {
   const [activeTypes, setActiveTypes] = React.useState<Set<GraphNode["type"]>>(
     new Set(["agent", "model", "category"]),
   );
+  const [zoom, setZoom] = React.useState(1);
+  const [pan, setPan] = React.useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = React.useState(false);
+  const dragRef = React.useRef<{ x: number; y: number; px: number; py: number } | null>(null);
+
+  const onWheel = React.useCallback((e: WheelEvent) => {
+    e.preventDefault();
+    setZoom((z) => Math.max(0.5, Math.min(2.5, z + (e.deltaY < 0 ? 0.15 : -0.15))));
+  }, []);
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    dragRef.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y };
+    setIsDragging(true);
+  };
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!dragRef.current) return;
+    setPan({
+      x: dragRef.current.px + (e.clientX - dragRef.current.x),
+      y: dragRef.current.py + (e.clientY - dragRef.current.y),
+    });
+  };
+  const onMouseUp = () => {
+    dragRef.current = null;
+    setIsDragging(false);
+  };
 
   React.useEffect(() => {
     fetch("/api/ecc/graph")
@@ -189,16 +214,70 @@ export function RelationshipGraph({ onAgentClick }: RelationshipGraphProps) {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20 text-muted-foreground">
-          <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Building graph…
+        <div className="flex flex-col items-center justify-center gap-3 py-20">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" /> Building graph…
+          </div>
+          {/* Skeleton */}
+          <div className="relative h-[400px] w-full max-w-2xl overflow-hidden rounded-lg border border-border bg-muted/20">
+            <div className="absolute left-1/2 top-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full bg-primary/5" />
+            <div className="absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full border border-primary/10" />
+            <div className="absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 animate-pulse rounded-full border border-primary/5" />
+          </div>
         </div>
       ) : (
-        <div className="ecc-scroll overflow-x-auto">
+        <div className="relative">
+          {/* Zoom controls */}
+          <div className="absolute right-2 top-2 z-10 flex flex-col gap-1">
+            <button
+              type="button"
+              onClick={() => setZoom((z) => Math.min(2.5, z + 0.2))}
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-card/80 text-muted-foreground backdrop-blur transition-colors hover:bg-accent hover:text-foreground"
+              aria-label="Zoom in"
+              title="Zoom in"
+            >
+              <PlusCircle className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setZoom((z) => Math.max(0.5, z - 0.2))}
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-card/80 text-muted-foreground backdrop-blur transition-colors hover:bg-accent hover:text-foreground"
+              aria-label="Zoom out"
+              title="Zoom out"
+            >
+              <MinusCircle className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setZoom(1);
+                setPan({ x: 0, y: 0 });
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-card/80 text-muted-foreground backdrop-blur transition-colors hover:bg-accent hover:text-foreground"
+              aria-label="Reset view"
+              title="Reset view"
+            >
+              <ResetIcon className="h-3.5 w-3.5" />
+            </button>
+            <span className="mt-0.5 rounded-md border border-border bg-card/80 px-1 py-0.5 text-center font-mono text-[0.55rem] text-muted-foreground backdrop-blur">
+              {Math.round(zoom * 100)}%
+            </span>
+          </div>
+          <div
+            className="ecc-scroll overflow-hidden"
+            style={{ cursor: isDragging ? "grabbing" : "grab" }}
+            onMouseDown={onMouseDown}
+            onMouseMove={onMouseMove}
+            onMouseUp={onMouseUp}
+            onMouseLeave={onMouseUp}
+          >
           <svg
             viewBox="0 0 800 560"
-            className="mx-auto h-[480px] w-full max-w-3xl"
+            className="mx-auto h-[480px] w-full max-w-3xl select-none"
             style={{ minWidth: 600 }}
           >
+            {/* Zoom/pan transform group */}
+            <g transform={`translate(${pan.x},${pan.y}) scale(${zoom})`}>
             {/* Links */}
             <g>
               {links.map((link) => {
@@ -286,7 +365,10 @@ export function RelationshipGraph({ onAgentClick }: RelationshipGraphProps) {
                 );
               })}
             </g>
+            </g>
+            {/* End zoom/pan group */}
           </svg>
+          </div>
         </div>
       )}
 

@@ -511,60 +511,118 @@ function Hero({
 function Stats({ overview }: { overview: Overview | null }) {
   const stats = overview
     ? [
-        { label: "Agents", value: overview.counts.agents, icon: Users, hint: "sandboxed subagents" },
-        { label: "Skills", value: overview.counts.skills, icon: BookOpen, hint: "durable workflows" },
-        { label: "Commands", value: overview.counts.commands, icon: Terminal, hint: "slash shims" },
-        { label: "Rule Packs", value: overview.counts.rulePacks, icon: Shield, hint: `${overview.counts.ruleFiles} files` },
-        { label: "Hooks", value: overview.counts.hooks, icon: Webhook, hint: "lifecycle enforcers" },
-        { label: "MCP Servers", value: overview.counts.mcpServers, icon: Boxes, hint: "reference catalog" },
-        { label: "LLM Layer Files", value: overview.counts.srcLlmFiles, icon: BrainCircuit, hint: "Python providers" },
-        { label: "ecc2 Rust Files", value: overview.counts.ecc2RustFiles, icon: Cpu, hint: "control plane" },
+        { label: "Agents", value: overview.counts.agents, icon: Users, hint: "sandboxed subagents", key: "agents" },
+        { label: "Skills", value: overview.counts.skills, icon: BookOpen, hint: "durable workflows", key: "skills" },
+        { label: "Commands", value: overview.counts.commands, icon: Terminal, hint: "slash shims", key: "commands" },
+        { label: "Rule Packs", value: overview.counts.rulePacks, icon: Shield, hint: `${overview.counts.ruleFiles} files`, key: "rules" },
+        { label: "Hooks", value: overview.counts.hooks, icon: Webhook, hint: "lifecycle enforcers", key: "hooks" },
+        { label: "MCP Servers", value: overview.counts.mcpServers, icon: Boxes, hint: "reference catalog", key: "mcp" },
+        { label: "LLM Files", value: overview.counts.srcLlmFiles, icon: BrainCircuit, hint: "Python providers", key: "llm" },
+        { label: "ecc2 Rust", value: overview.counts.ecc2RustFiles, icon: Cpu, hint: "control plane", key: "ecc2" },
       ]
     : [];
+
+  const featured = stats.find((s) => s.key === "skills");
+  const secondary = stats.filter((s) => s.key === "agents" || s.key === "commands");
+  const rest = stats.filter((s) => !["skills", "agents", "commands"].includes(s.key));
 
   return (
     <section className="border-b border-border">
       <div className="mx-auto max-w-6xl px-4 py-10">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {(overview ? stats : Array.from({ length: 8 })).map((s, i) => {
-            const loaded = s as { label: string; value: number; icon: React.ElementType; hint: string } | undefined;
-            const Icon = loaded?.icon ?? Boxes;
-            return (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, scale: 0.96 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{ duration: 0.3, delay: i * 0.04 }}
-              >
-                <Card className="overflow-hidden">
-                  <CardContent className="flex items-center gap-3 p-4">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-2xl font-bold tabular-nums">
-                          {loaded ? loaded.value : "—"}
-                        </span>
-                        <span className="text-xs text-muted-foreground">{loaded?.label}</span>
-                      </div>
-                      <p className="truncate text-[0.7rem] text-muted-foreground">
-                        {loaded?.hint ?? "loading"}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            );
-          })}
-        </div>
+        {overview ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6 lg:grid-rows-2">
+            {/* Featured: Skills (large, spans 2 cols + 2 rows) */}
+            {featured && (
+              <BentoCard
+                stat={featured}
+                index={0}
+                className="col-span-2 row-span-2 sm:col-span-2 sm:row-span-2 lg:col-span-2 lg:row-span-2"
+                featured
+              />
+            )}
+            {/* Secondary: Agents + Commands (medium, 1 col each) */}
+            {secondary.map((s, i) => (
+              <BentoCard key={s.key} stat={s} index={i + 1} className="col-span-1 sm:col-span-1 lg:col-span-2" />
+            ))}
+            {/* Rest: 5 smaller cards */}
+            {rest.map((s, i) => (
+              <BentoCard key={s.key} stat={s} index={i + 3} className="col-span-1" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Card key={i} className="h-24 animate-pulse bg-muted/30" />
+            ))}
+          </div>
+        )}
         {/* Assets-by-type bar chart */}
         <div className="mt-6">
           <StatsChart overview={overview} />
         </div>
       </div>
     </section>
+  );
+}
+
+function BentoCard({
+  stat,
+  index,
+  className,
+  featured = false,
+}: {
+  stat: { label: string; value: number; icon: React.ElementType; hint: string; key: string };
+  index: number;
+  className?: string;
+  featured?: boolean;
+}) {
+  const Icon = stat.icon;
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96 }}
+      whileInView={{ opacity: 1, scale: 1 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.3, delay: index * 0.04 }}
+      className={className}
+    >
+      <Card
+        className={cn(
+          "group relative h-full overflow-hidden transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5",
+          featured && "bg-gradient-to-br from-primary/10 via-card to-card",
+        )}
+      >
+        {/* Subtle gradient orb in corner */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/10 opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-100"
+        />
+        <CardContent className={cn("relative flex flex-col justify-between", featured ? "p-6" : "p-4")}>
+          <div className="flex items-start justify-between gap-2">
+            <div
+              className={cn(
+                "flex items-center justify-center rounded-lg bg-primary/10 text-primary transition-transform group-hover:scale-110",
+                featured ? "h-12 w-12" : "h-9 w-9",
+              )}
+            >
+              <Icon className={featured ? "h-6 w-6" : "h-4.5 w-4.5"} />
+            </div>
+          </div>
+          <div className={cn(featured ? "mt-6" : "mt-3")}>
+            <div className="flex items-baseline gap-1.5">
+              <span className={cn("font-bold tabular-nums", featured ? "text-5xl" : "text-2xl")}>
+                {stat.value}
+              </span>
+              <span className={cn("text-muted-foreground", featured ? "text-base" : "text-xs")}>
+                {stat.label}
+              </span>
+            </div>
+            <p className={cn("truncate text-muted-foreground", featured ? "mt-1 text-sm" : "text-[0.7rem]")}>
+              {stat.hint}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }
 

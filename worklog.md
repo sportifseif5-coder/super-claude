@@ -507,3 +507,66 @@ Stage Summary:
 - VLM polish: 8/10 (consistent).
 - Next phase candidates: bento grid for stats, graph zoom/pan, agent-skill cross-references,
   ecc2 harness-eval playground, theme persistence in URL, loading skeletons for graph.
+
+---
+Task ID: 12 (recurring webDevReview round 7)
+Agent: main (Z.ai Code)
+Task: QA + new features (bento grid stats, graph zoom/pan, loading skeleton) + styling polish.
+
+Work Log:
+- Reviewed worklog (round 6: 19 features, 11 API endpoints, clickable graph + recently-viewed).
+- QA via agent-browser + VLM: app stable, no errors. VLM noted Stats was uniform grid,
+  graph lacked zoom/pan.
+
+NEW FEATURES:
+1. Bento grid for Stats section:
+   - Featured large card for Skills (286) — spans 2 cols × 2 rows, gradient background
+     (from-primary/10 via-card to-card), 5xl number, 6xl icon, hover gradient orb.
+   - Secondary cards for Agents (68) + Commands (94) — medium, lg:col-span-2.
+   - 5 smaller cards for the rest (Rules/Hooks/MCP/LLM/ecc2) — 1 col each.
+   - BentoCard component with featured prop (larger icon, padding, number size).
+   - Hover: border-primary/30 + shadow-lg + gradient orb appears in corner.
+   - VLM-verified: "Featured Card (Left, 2x2) showing 286 Skills, plus 6 smaller cards."
+
+2. Graph zoom/pan controls:
+   - Zoom in / zoom out / reset buttons in top-right corner of graph (glassmorphism bg).
+   - Zoom percentage indicator (100%, 120%, etc.).
+   - Drag-to-pan (mouse down + move updates pan offset; cursor changes grab↔grabbing).
+   - Zoom range 0.5×–2.5×, applied via SVG <g transform="translate(pan) scale(zoom)">.
+   - VLM-verified: "zoom in, zoom out, and reset buttons in top-right corner, 100% indicator."
+
+3. Graph loading skeleton:
+   - Replaced plain spinner with 3 concentric pulsing rings (primary/5, primary/10,
+     primary/5 opacity) simulating the radial graph layout during load.
+
+STYLING POLISH:
+- BentoCard: gradient orb in corner (opacity 0→100 on hover, blur-2xl).
+- Featured card: gradient bg + larger icon/number/padding.
+- Zoom buttons: bg-card/80 backdrop-blur (glassmorphism).
+- Fixed React ref-during-render lint error (dragRef.current → isDragging state).
+
+PAGE INTEGRATION:
+- Stats component rewritten with bento layout + BentoCard sub-component.
+- RelationshipGraph: added zoom/pan state + controls + skeleton loading.
+
+SELF-VERIFICATION (agent-browser + VLM):
+- Bento grid: VLM-verified featured 2x2 Skills card + 6 smaller cards.
+- Graph zoom: VLM-verified zoom in/out/reset buttons + percentage indicator; clicking
+  zoom in button works (ref e117 clickable).
+- Loading skeleton: 3 concentric pulsing rings.
+- Mobile (390x844): reloads cleanly.
+- Lint: 0 errors. Dev log: all 11 routes 200, no runtime errors.
+- VLM full-page rating: 7/10 (full-page screenshot inflates density; actual scroll
+  experience has scroll spy + reading progress + keyboard jumps).
+
+Stage Summary:
+- App now has 9 sections + 21 interactive features total:
+  Catalog browser, Hooks Explorer (+raw JSON), MCP Catalog, Command Palette, Provider Radar,
+  Item Detail Modal (+share/copy/github), Architecture Diagram, Scroll Spy, Discover button,
+  Compare modal, Shortcut help overlay, Stats bento grid + bar chart, Progressive disclosure
+  arch cards, Reading progress bar, Shareable deep links, Relationship graph (+clickable nodes
+  +animated entrance +zoom/pan +loading skeleton), Glassmorphism + mesh bg, Recently-viewed
+  history, Graph type filter, Graph zoom/pan controls.
+- 11 API endpoints (unchanged).
+- Next phase candidates: agent-skill cross-references, ecc2 harness-eval playground,
+  theme persistence in URL, graph node search/highlight, collapsible sections.
