@@ -212,3 +212,29 @@ export interface ModelDistribution {
   count: number;
   color: string;
 }
+
+/* Skill scores */
+export interface SkillScore {
+  slug: string;
+  name: string;
+  score: number;
+  grade: "A" | "B" | "C" | "D";
+  breakdown: { label: string; points: number }[];
+}
+
+/* Token estimate */
+export interface TokenItem {
+  name: string;
+  tokens: number;
+}
+export interface TokenEstimate {
+  agents: TokenItem[];
+  skills: TokenItem[];
+  mcpServers: { name: string; tokens: number; toolCount: number }[];
+  totalAgents: number;
+  totalSkills: number;
+  totalMcp: number;
+  grandTotal: number;
+  contextWindow: number;
+  percentUsed: number;
+}

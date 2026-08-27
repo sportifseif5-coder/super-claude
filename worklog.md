@@ -791,3 +791,70 @@ Stage Summary:
 - App now has 9 sections + 29 interactive features total (added: collapsible sections, tool matrix).
 - 12 API endpoints.
 - VLM polish: 7/10 (full-page screenshot inflates density; collapsible sections now available).
+
+---
+Task ID: 17 (user request: AI-strengthening features)
+Agent: main (Z.ai Code)
+Task: Implement 3 AI-area features — Skill Effectiveness Scoring, Exploration Memory + Recommendations, Token Budget Visualizer.
+
+FEATURE 1: Skill Effectiveness Scoring (/api/ecc/scores)
+- Scanner: getSkillScores() scores all 286 skills 0-100 based on 7 criteria:
+  - Has "When to Use" section (+20)
+  - Has "How it Works" section (+20)
+  - Has code examples (+20)
+  - Has argument-hint (+10)
+  - Rich description >100 chars (+10)
+  - First-party origin: ECC (+10)
+  - Section depth (up to +10)
+- Grade: A (≥80), B (≥60), C (≥40), D (<40).
+- Component: skill-scores.tsx — top 10 ranked with grade badges (color-coded), progress bars,
+  expandable score breakdown per skill, grade distribution header (A: X, B: Y, C: Z, D: W).
+- Verified: 286 skills scored; top 3: ecc-recipes (84/A), autonomous-loops (80/A),
+  continuous-learning-v2 (80/A).
+
+FEATURE 2: Exploration Memory + Recommendations (localStorage)
+- Component: exploration-memory.tsx — persistent user profiling:
+  - Tracks viewed items in localStorage (key: ecc-exploration-history, max 20).
+  - Builds "Top interests" profile from category frequency (e.g. "a11y 3", "rust 2").
+  - Recommends unviewed items from the user's top interest category.
+  - Shows "Recently explored" horizontal scroll of viewed items.
+  - Clear history button.
+- Integration: openItem() dispatches "ecc:view-item" custom event; ExplorationMemory listens.
+- Persists across reloads (localStorage).
+- Verified: opened a11y-architect → "Your exploration profile" appeared with "a11y 1" tag,
+  localStorage confirmed persistence.
+
+FEATURE 3: Token Budget Visualizer (/api/ecc/tokens)
+- Scanner: getTokenEstimate() estimates token cost (1 token ≈ 4 chars) for all agents,
+  skills, and MCP servers.
+- Returns: grandTotal, percentUsed, top 10 heaviest agents/skills, breakdown by type.
+- Component: token-budget.tsx — context budget bar (200k window):
+  - Animated progress bar (green/amber/red based on usage %).
+  - Breakdown cards: Agents / Skills / MCP (tokens + item count).
+  - Optimization tip (contextual: warns if MCPs are heavy, reassures if healthy).
+  - Collapsible "Top 5 heaviest agents" list.
+- Verified: 757k tokens total = 379% of 200k window (loading everything would overflow 3.8x —
+  a powerful insight showing why selective loading matters, directly serving ECC's
+  "optimize the context window" mission).
+
+API ROUTES (2 new, force-dynamic):
+- /api/ecc/scores — 286 skill scores with breakdowns.
+- /api/ecc/tokens — token estimates with top-10 lists.
+
+SELF-VERIFICATION:
+- Scores API: 286 skills scored, top 3 verified.
+- Tokens API: 757k total, 379% used, verified.
+- SkillScores component: "Skill effectiveness scores" heading + top entries render.
+- ExplorationMemory: "Your exploration profile" + "Top interests" + localStorage verified.
+- TokenBudget: "Context budget" + 379% overflow + red bar verified (VLM-confirmed).
+- Mobile: reloads cleanly, deep link persists.
+- Lint: 0 errors. Dev log: all 14 routes 200, no runtime errors.
+
+Stage Summary:
+- App now has 9 sections + 32 interactive features total:
+  + Skill effectiveness scores, Exploration memory + recommendations, Token budget visualizer.
+- 14 API endpoints (was 12): + /api/ecc/scores, /api/ecc/tokens.
+- Three AI areas strengthened:
+  (1) Skills intelligence — effectiveness scoring makes 286 skills navigable by quality.
+  (2) Long memory — exploration profile persists across sessions, recommends based on interests.
+  (3) Context management — token budget makes abstract context-window cost tangible + actionable.

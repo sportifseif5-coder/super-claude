@@ -52,6 +52,9 @@ import { BackToTop } from "@/components/ecc/back-to-top";
 import { ModelDonut } from "@/components/ecc/model-donut";
 import { CollapsibleSection } from "@/components/ecc/collapsible-section";
 import { ToolMatrix } from "@/components/ecc/tool-matrix";
+import { SkillScores } from "@/components/ecc/skill-scores";
+import { ExplorationMemory } from "@/components/ecc/exploration-memory";
+import { TokenBudget } from "@/components/ecc/token-budget";
 import type {
   Overview,
   CatalogResponse,
@@ -213,13 +216,15 @@ export default function Home() {
     setCompareOpen(true);
   };
 
-  // Open an item and track it in recently-viewed
+  // Open an item and track it in recently-viewed + exploration history
   const openItem = (item: CatalogItem) => {
     setDetailItem(item);
     setRecentlyViewed((prev) => {
       const filtered = prev.filter((it) => it.slug !== item.slug || it.type !== item.type);
       return [item, ...filtered].slice(0, 8);
     });
+    // Dispatch event for ExplorationMemory (localStorage persistence)
+    document.dispatchEvent(new CustomEvent("ecc:view-item", { detail: item }));
   };
 
   // Open an agent by slug (used by the relationship graph)
@@ -266,6 +271,7 @@ export default function Home() {
           onCompare={(item) => openCompare(item)}
         />
         <RecentlyViewed items={recentlyViewed} onOpen={openItem} />
+        <ExplorationMemory catalog={catalog} onOpen={openItem} />
         <AIIntegration overview={overview} catalog={catalog} />
         <HooksExplorerSection />
         <HooksMemory overview={overview} sections={sections} />
@@ -747,6 +753,10 @@ function Catalog({
         <div className="mt-8">
           <CatalogBrowser catalog={catalog} loading={loading} onSelect={onSelect} onCompare={onCompare} />
         </div>
+        {/* Skill effectiveness scores */}
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <SkillScores />
+        </div>
       </div>
     </section>
   );
@@ -878,10 +888,13 @@ function AIIntegration({ overview, catalog }: { overview: Overview | null; catal
           </div>
         </div>
 
-        {/* Provider comparison radar + model distribution */}
+        {/* Provider comparison radar + model distribution + token budget */}
         <div className="mt-6 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
           {providers.length > 0 && <ProviderChart providers={providers} />}
           <ModelDonut />
+        </div>
+        <div className="mt-4">
+          <TokenBudget />
         </div>
 
         {/* Agent × Tool cross-reference matrix */}

@@ -1275,3 +1275,143 @@ export async function getModelDistribution(): Promise<ModelDistribution[]> {
     .sort((a, b) => b.count - a.count);
   return modelDistCache;
 }
+
+// ---------------------------------------------------------------------------
+// Skill effectiveness scoring (0-100)
+// ---------------------------------------------------------------------------
+
+export interface SkillScore {
+  slug: string;
+  name: string;
+  score: number;
+  grade: "A" | "B" | "C" | "D";
+  breakdown: { label: string; points: number }[];
+}
+
+let scoreCache: SkillScore[] | null = null;
+
+export async function getSkillScores(): Promise<SkillScore[]> {
+  if (scoreCache) return scoreCache;
+  const catalog = await getCatalog();
+  const scores: SkillScore[] = [];
+
+  for (const skill of catalog.skills) {
+    const detail = await getItemDetail(skill.filePath);
+    const breakdown: { label: string; points: number }[] = [];
+    let score = 0;
+
+    // Has "When to Use" section
+    const hasWhenToUse = Boolean(detail?.whenToUse);
+    breakdown.push({ label: "Has 'When to Use'", points: hasWhenToUse ? 20 : 0 });
+    score += hasWhenToUse ? 20 : 0;
+
+    // Has "How it Works" section
+    const hasHowItWorks = Boolean(detail?.howItWorks);
+    breakdown.push({ label: "Has 'How it Works'", points: hasHowItWorks ? 20 : 0 });
+    score += hasHowItWorks ? 20 : 0;
+
+    // Has code examples
+    const examples = detail?.examples.length ?? 0;
+    breakdown.push({ label: "Has code examples", points: examples > 0 ? 20 : 0 });
+    score += examples > 0 ? 20 : 0;
+
+    // Has argument-hint
+    const hasArgHint = Boolean(skill.extra["argument-hint"]);
+    breakdown.push({ label: "Has argument-hint", points: hasArgHint ? 10 : 0 });
+    score += hasArgHint ? 10 : 0;
+
+    // Description length > 100 chars
+    const descLen = skill.description.length;
+    breakdown.push({ label: "Rich description (>100 chars)", points: descLen > 100 ? 10 : 0 });
+    score += descLen > 100 ? 10 : 0;
+
+    // Origin: ECC (first-party)
+    const isECC = skill.extra["origin"] === "ECC";
+    breakdown.push({ label: "First-party (origin: ECC)", points: isECC ? 10 : 0 });
+    score += isECC ? 10 : 0;
+
+    // Number of sections (completeness)
+    const sectionCount = detail?.sections.length ?? 0;
+    const sectionsPoints = Math.min(10, Math.floor(sectionCount / 3));
+    breakdown.push({ label: `Section depth (${sectionCount} sections)`, points: sectionsPoints });
+    score += sectionsPoints;
+
+    const grade: SkillScore["grade"] =
+      score >= 80 ? "A" : score >= 60 ? "B" : score >= 40 ? "C" : "D";
+
+    scores.push({ slug: skill.slug, name: skill.name, score, grade, breakdown });
+  }
+
+  scoreCache = scores.sort((a, b) => b.score - a.score);
+  return scoreCache;
+}
+
+// ---------------------------------------------------------------------------
+// Token estimation + context budget
+// ---------------------------------------------------------------------------
+
+export interface TokenEstimate {
+  agents: { name: string; tokens: number }[];
+  skills: { name: string; tokens: number }[];
+  mcpServers: { name: string; tokens: number; toolCount: number }[];
+  totalAgents: number;
+  totalSkills: number;
+  totalMcp: number;
+  grandTotal: number;
+  contextWindow: number;
+  percentUsed: number;
+}
+
+let tokenCache: TokenEstimate | null = null;
+
+function estimateTokens(text: string): number {
+  // Rough: 1 token ≈ 4 chars
+  return Math.ceil(text.length / 4);
+}
+
+export async function getTokenEstimate(): Promise<TokenEstimate> {
+  if (tokenCache) return tokenCache;
+  const catalog = await getCatalog();
+  const mcp = await getMcp();
+
+  const agentTokens: { name: string; tokens: number }[] = [];
+  for (const a of catalog.agents) {
+    const detail = await getItemDetail(a.filePath);
+    // Token cost = frontmatter + body (the agent prompt loaded into context)
+    const tokens = estimateTokens(detail?.content ?? a.description);
+    agentTokens.push({ name: a.name, tokens });
+  }
+
+  const skillTokens: { name: string; tokens: number }[] = [];
+  for (const s of catalog.skills) {
+    const detail = await getItemDetail(s.filePath);
+    const tokens = estimateTokens(detail?.content ?? s.description);
+    skillTokens.push({ name: s.name, tokens });
+  }
+
+  // MCP token cost: each tool definition is ~200-400 tokens of JSON schema
+  const mcpTokens = mcp.servers.map((s) => ({
+    name: s.name,
+    tokens: 300, // average tool schema cost
+    toolCount: 1, // simplified
+  }));
+
+  const totalAgents = agentTokens.reduce((s, a) => s + a.tokens, 0);
+  const totalSkills = skillTokens.reduce((s, a) => s + a.tokens, 0);
+  const totalMcp = mcpTokens.reduce((s, a) => s + a.tokens, 0);
+  const grandTotal = totalAgents + totalSkills + totalMcp;
+  const contextWindow = 200000; // Claude default
+
+  tokenCache = {
+    agents: agentTokens.sort((a, b) => b.tokens - a.tokens).slice(0, 10),
+    skills: skillTokens.sort((a, b) => b.tokens - a.tokens).slice(0, 10),
+    mcpServers: mcpTokens.slice(0, 10),
+    totalAgents,
+    totalSkills,
+    totalMcp,
+    grandTotal,
+    contextWindow,
+    percentUsed: Math.round((grandTotal / contextWindow) * 100),
+  };
+  return tokenCache;
+}
