@@ -858,3 +858,27 @@ Stage Summary:
   (1) Skills intelligence — effectiveness scoring makes 286 skills navigable by quality.
   (2) Long memory — exploration profile persists across sessions, recommends based on interests.
   (3) Context management — token budget makes abstract context-window cost tangible + actionable.
+
+---
+Task ID: 18 (bugfix: invisible graph nodes)
+Agent: main (Z.ai Code)
+Task: Fix the invisible relationship graph nodes.
+
+Root Cause:
+- The graph's 131 nodes used <motion.g> (framer-motion animated SVG group) with
+  initial={{ opacity: 0, scale: 0 }} animate={{ opacity: 1, scale: 1 }}.
+- framer-motion's `scale` transform applies CSS `transform: scale()` which SVG <g>
+  elements IGNORE — they need the SVG `transform` attribute instead.
+- Result: all nodes were stuck at scale: 0 (invisible), making the graph appear empty
+  even though 189 SVG circles were in the DOM.
+
+Fix:
+- Replaced <motion.g> with plain <g> elements.
+- Moved opacity transition to inline CSS: style={{ opacity, transition: "opacity 0.15s" }}.
+- Removed the scale animation entirely (the broken part).
+- Nodes now render immediately at full scale with smooth CSS opacity transitions.
+
+Verification:
+- VLM: "graph populated, central blue node (sonnet) connected to ring of amber nodes,
+  purple node visible."
+- Lint: 0 errors.

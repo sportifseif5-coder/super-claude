@@ -351,18 +351,11 @@ export function RelationshipGraph({ onAgentClick }: RelationshipGraphProps) {
                 const color = TYPE_COLORS[n.type];
                 const isClickable = n.type === "agent" && onAgentClick;
                 return (
-                  <motion.g
+                  <g
                     key={n.id}
                     transform={`translate(${n.x},${n.y})`}
                     className={isClickable ? "cursor-pointer" : "cursor-default"}
-                    style={{ opacity: isDimmed ? 0.15 : 1 }}
-                    initial={{ opacity: 0, scale: 0 }}
-                    animate={{ opacity: isDimmed ? 0.15 : 1, scale: 1 }}
-                    transition={{
-                      duration: 0.3,
-                      delay: Math.min(idx * 0.004, 0.6),
-                      ease: "easeOut",
-                    }}
+                    style={{ opacity: isDimmed ? 0.15 : 1, transition: "opacity 0.15s" }}
                     onMouseEnter={() => setHovered(n.id)}
                     onMouseLeave={() => setHovered(null)}
                     onClick={() => {
@@ -402,7 +395,7 @@ export function RelationshipGraph({ onAgentClick }: RelationshipGraphProps) {
                         className="pointer-events-none transition-opacity duration-150"
                       />
                     )}
-                  </motion.g>
+                  </g>
                 );
               })}
             </g>
