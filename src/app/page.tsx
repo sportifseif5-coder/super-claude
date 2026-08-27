@@ -323,7 +323,7 @@ function Header({
             <Layers className="h-4.5 w-4.5" />
           </div>
           <div className="leading-none">
-            <span className="block text-sm font-semibold">ECC Explorer</span>
+            <span className="block text-sm font-semibold">Super Claude</span>
             <span className="block font-mono text-[0.65rem] text-muted-foreground">
               {overview ? `v${overview.repo.version}` : "loading…"}
             </span>
@@ -443,9 +443,9 @@ function Hero({
             )}
           </div>
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-            Everything{" "}
+            Super{" "}
             <span className="bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent">
-              Claude Code
+              Claude
             </span>
           </h1>
           <p className="mt-4 text-lg text-muted-foreground sm:text-xl">
@@ -1223,7 +1223,7 @@ function Footer({ overview, onOpenHelp }: { overview: Overview | null; onOpenHel
               <Layers className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-sm font-medium">ECC Explorer</p>
+              <p className="text-sm font-medium">Super Claude</p>
               <p className="font-mono text-[0.65rem] text-muted-foreground">
                 {overview
                   ? `${overview.repo.name} · v${overview.repo.version} · ${overview.repo.license}`

@@ -15,10 +15,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ECC Explorer — Everything Claude Code",
+  title: "Super Claude",
   description:
     "An interactive dive into affaan-m/ecc: the MIT-licensed agent harness operating system. Explore 68 agents, 286 skills, the provider-agnostic LLM layer, hooks, the memory vault, and the Rust control plane.",
   keywords: [
+    "Super Claude",
     "ECC",
     "Everything Claude Code",
     "agent harness",
@@ -35,7 +36,7 @@ export const metadata: Metadata = {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },
   openGraph: {
-    title: "ECC Explorer — Everything Claude Code",
+    title: "Super Claude",
     description:
       "Interactive exploration of the agent harness operating system: agents, skills, hooks, memory, AI layer, and the Rust control plane.",
     type: "website",
