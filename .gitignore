@@ -52,3 +52,7 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# Cloned data source (not part of this project's code)
+super-claude-repo/
+ecc-repo/

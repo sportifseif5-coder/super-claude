@@ -11,7 +11,7 @@ import path from "path";
  * resolves and validates paths with path.relative + a ".." check.
  */
 
-export const ECC_REPO_ROOT = path.join(process.cwd(), "ecc-repo");
+export const ECC_REPO_ROOT = path.join(process.cwd(), "super-claude-repo");
 
 export type Frontmatter = Record<string, unknown>;
 
