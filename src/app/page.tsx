@@ -381,7 +381,7 @@ function Header({
           </Button>
           <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
             <a
-              href="https://github.com/affaan-m/ecc"
+              href="https://github.com/sportifseif5-coder/super-claude"
               target="_blank"
               rel="noopener noreferrer"
             >
